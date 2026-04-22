@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { start: number; sub: number; min: number; max: number }
 const ROUNDS: Round[] = [
@@ -84,24 +85,79 @@ export const NumberLineJumpsBack = () => {
 
     const numbers = Array.from({ length: round.max - round.min + 1 }, (_, i) => i + round.min)
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'trace_jumps',
+            description: 'Animate backward jumps on the number line one at a time',
+            generate: () => {
+                const steps = []
+                for (let i = 0; i < round.sub; i++) {
+                    const from = round.start - i
+                    const to = round.start - i - 1
+                    steps.push({
+                        delay: i === 0 ? 0 : 900,
+                        annotations: [
+                            { action: 'circle' as const, element: `[data-item="${from}"]`, color: '#fb923c' },
+                            { action: 'animate_arrow' as const, element: `[data-item="${from}"]`, toElement: `[data-item="${to}"]`, color: '#fb923c' },
+                            { action: 'label' as const, element: `[data-item="${to}"]`, label: `${i + 1}`, color: '#fb923c' },
+                        ],
+                        speech: i === 0 ? `Starting at ${from}, jump back!` : `${i + 1}`,
+                    })
+                }
+                return steps
+            },
+        },
+        {
+            id: 'highlight_operands',
+            description: 'Circle the start number and the target separately with labels',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle' as const, element: `[data-item="${round.start}"]`, color: '#60a5fa' },
+                        { action: 'label' as const, element: `[data-item="${round.start}"]`, label: `Start: ${round.start}`, color: '#60a5fa' },
+                    ],
+                    speech: `We start at ${round.start}.`,
+                },
+                {
+                    delay: 1500,
+                    annotations: [
+                        { action: 'circle' as const, element: `[data-item="${target}"]`, color: '#f97316' },
+                        { action: 'label' as const, element: `[data-item="${target}"]`, label: `Land: ${target}`, color: '#f97316' },
+                    ],
+                    speech: `We need to jump back ${round.sub} to land on ${target}.`,
+                },
+            ],
+        },
+    ], [round.start, round.sub, target])
+
+    const lessonContext = useMemo(() => ({
+        type: 'number_line' as const,
+        operands: [round.start, round.sub],
+        answer: target,
+    }), [round.start, round.sub, target])
+
     return (
         <LessonShell
+            lessonId="number-line-jumps-back"
             voiceConfig={VOICE_CONFIGS["number-line-jumps"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-orange-600" subtitle={`${round.start} − ${round.sub} — jump back ${round.sub} times!`}>
+            accentClass="bg-orange-600" subtitle={`${round.start} − ${round.sub} — jump back ${round.sub} times!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
-            <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
+            <div className="h-full flex flex-col items-center justify-center gap-8 p-6" data-lesson-focus>
                 <motion.div animate={feedback === 'correct' ? { color: '#10b981' } : {}}
-                    className="font-black font-display text-5xl text-white">
+                    className="font-black font-display text-5xl text-white" data-key-step>
                     {round.start} − {round.sub} = <span className="text-orange-400">{position}</span>
                 </motion.div>
 
                 {/* Number line */}
-                <div className="w-full max-w-2xl relative pb-8">
+                <div className="w-full max-w-2xl relative pb-8" data-hint-region>
                     <div className="relative h-4 bg-white/10 rounded-full mx-4">
                         <motion.div className="absolute top-0 right-0 h-full bg-orange-500/50 rounded-full"
                             animate={{ width: `${100 - pct(position)}%` }}
@@ -109,7 +165,7 @@ export const NumberLineJumpsBack = () => {
                     </div>
                     <div className="relative h-8 mx-4 mt-1">
                         {numbers.map(n => (
-                            <div key={n} className="absolute flex flex-col items-center"
+                            <div key={n} data-item={n} className="absolute flex flex-col items-center"
                                 style={{ left: `${pct(n)}%`, transform: 'translateX(-50%)' }}>
                                 <div className={`w-0.5 h-3 ${n === target ? 'bg-orange-400' : 'bg-white/30'}`} />
                                 <span className={`font-display text-[10px] mt-0.5 ${n === target ? 'text-orange-400 font-bold' : 'text-white/40'}`}>{n}</span>
@@ -136,7 +192,7 @@ export const NumberLineJumpsBack = () => {
                     Jumps remaining: <span className="text-orange-400 font-black text-2xl">{remaining}</span>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4" data-answer-area>
                     <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.9 }}
                         onClick={jumpFive} disabled={remaining < 5}
                         className="px-6 py-3 rounded-xl bg-orange-800/50 hover:bg-orange-700/50 disabled:opacity-30 border border-orange-400/20 text-white font-bold font-display">

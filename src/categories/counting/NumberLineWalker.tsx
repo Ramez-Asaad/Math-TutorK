@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { start: number; target: number; min: number; max: number }
 
@@ -84,8 +85,53 @@ export const NumberLineWalker = () => {
 
     const numbers = Array.from({ length: round.max - round.min + 1 }, (_, i) => i + round.min)
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'line_walk_goal',
+            description: 'Show the star target and the frog’s current position on the line',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="nl-target"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="nl-target"]', label: `Goal ${round.target}`, color: '#fbbf24' },
+                    ],
+                    speech: `Land the frog on ${round.target}.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="nl-line"]', color: '#34d399' },
+                    ],
+                    speech: 'Use the arrows to move one step, or the ±5 jumps for faster moves.',
+                },
+            ],
+        },
+        {
+            id: 'line_walk_check',
+            description: 'Highlight the Check button when ready to verify',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="nl-controls"]', color: '#a78bfa' },
+                    ],
+                    speech: `When your position reads ${round.target}, press Check.`,
+                },
+            ],
+        },
+    ], [round.target])
+
+    const lessonContext = useMemo(() => ({
+        type: 'number_line_walker' as const,
+        operands: [round.start, round.target],
+        answer: round.target,
+        itemCount: round.max - round.min + 1,
+    }), [round.start, round.target, round.min, round.max])
+
     return (
         <LessonShell
+            lessonId="number-line-walker"
             voiceConfig={VOICE_CONFIGS["number-line"]}
             feedback={feedback}
             problemIndex={roundIdx}
@@ -94,6 +140,8 @@ export const NumberLineWalker = () => {
             correct={correctCount}
             accentClass="bg-amber-500"
             subtitle={`Walk to number ${round.target}!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -107,6 +155,7 @@ export const NumberLineWalker = () => {
             <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
                 {/* Target */}
                 <motion.div
+                    data-hint-region="nl-target"
                     animate={{ scale: [1, 1.06, 1] }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                     className="bg-amber-500/20 border border-amber-400/40 rounded-2xl px-8 py-4 text-center"
@@ -116,7 +165,7 @@ export const NumberLineWalker = () => {
                 </motion.div>
 
                 {/* Number line */}
-                <div className="w-full max-w-2xl relative">
+                <div data-hint-region="nl-line" className="w-full max-w-2xl relative">
                     {/* Track */}
                     <div className="relative h-4 bg-white/10 rounded-full mx-4">
                         <motion.div
@@ -173,7 +222,7 @@ export const NumberLineWalker = () => {
                 </div>
 
                 {/* Controls */}
-                <div className="flex gap-4 items-center">
+                <div data-hint-region="nl-controls" className="flex gap-4 items-center">
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

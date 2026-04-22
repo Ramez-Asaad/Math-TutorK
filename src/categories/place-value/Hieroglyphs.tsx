@@ -8,6 +8,7 @@ import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Symbol legend ──────────────────────────────────────────── */
 const SYMBOLS: { glyph: string; value: number; label: string }[] = [
@@ -73,14 +74,59 @@ export const Hieroglyphs = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none')
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'hg_decode_symbols',
+            description: 'Break the number into parts using the symbol values on the parchment',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="hg-parchment"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="hg-parchment"]', label: 'Glyphs', color: '#fbbf24' },
+                    ],
+                    speech: 'Each repeated symbol adds its value—read them like place-value chunks.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="hg-legend"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Cross-check unfamiliar shapes against the symbol key on the side.',
+                },
+            ],
+        },
+        {
+            id: 'hg_enter_value',
+            description: 'Type the whole number the glyphs represent',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="hg-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Add the parts mentally, then enter the total on the keypad.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'hieroglyphs' as const,
+        operands: [target],
+    }), [target])
+
     return (
         <LessonShell
+            lessonId="hieroglyphs"
             voiceConfig={VOICE_CONFIGS["hieroglyphs"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-violet-700"
             subtitle="Decode the Egyptian hieroglyphs!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -104,6 +150,7 @@ export const Hieroglyphs = () => {
                             className="flex-1 relative"
                         >
                             <motion.div
+                                data-hint-region="hg-parchment"
                                 animate={
                                     feedback === 'correct'
                                         ? { borderColor: '#f59e0b', boxShadow: '0 0 40px rgba(245,158,11,0.4)', x: 0 }
@@ -159,6 +206,7 @@ export const Hieroglyphs = () => {
 
                     {/* Numpad */}
                     <motion.div
+                        data-hint-region="hg-numpad"
                         animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                         transition={SPRING}
                     >
@@ -167,7 +215,7 @@ export const Hieroglyphs = () => {
                 </div>
 
                 {/* Legend sidebar */}
-                <div className="w-48 flex flex-col gap-2 bg-white/5 rounded-2xl border border-white/10 p-4">
+                <div data-hint-region="hg-legend" className="w-48 flex flex-col gap-2 bg-white/5 rounded-2xl border border-white/10 p-4">
                     <div className="text-white/50 font-display font-bold text-sm text-center mb-2">Symbol Key</div>
                     {SYMBOLS.map((s, i) => (
                         <motion.div

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { story: string; a: number; b: number; emoji: string }
 const ROUNDS: Round[] = [
@@ -73,12 +74,67 @@ export const AdditionWordProblems = () => {
         reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false); setShowHint(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'word_problem_find_numbers',
+            description: 'Identify the two numbers to add from the story card',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="story-card"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="story-card"]', label: 'Read carefully', color: '#fbbf24' },
+                    ],
+                    speech: 'Find how many you start with, and how many more join.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'label', element: '[data-hint-region="story-card"]', label: `${round.a} + ${round.b}`, color: '#34d399' },
+                    ],
+                    speech: `This story is ${round.a} plus ${round.b}.`,
+                },
+            ],
+        },
+        {
+            id: 'word_problem_numpad',
+            description: 'Point to the answer area and total',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="answer-zone"]', color: '#a78bfa' },
+                        { action: 'label', element: '[data-hint-region="answer-zone"]', label: 'Type total', color: '#a78bfa' },
+                    ],
+                    speech: 'Use the keypad to enter the combined amount.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="story-card"]', color: '#f59e0b' },
+                    ],
+                    speech: `Combine ${round.a} and ${round.b} — type the total on the keypad.`,
+                },
+            ],
+        },
+    ], [round.a, round.b, answer])
+
+    const lessonContext = useMemo(() => ({
+        type: 'add_word_problem' as const,
+        operands: [round.a, round.b],
+        answer,
+        itemCount: answer,
+    }), [round.a, round.b, answer])
+
     return (
         <LessonShell
+            lessonId="addition-word-problems"
             voiceConfig={VOICE_CONFIGS["addition-word-problems"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-emerald-600" subtitle="Read the story and solve!">
+            accentClass="bg-emerald-600" subtitle="Read the story and solve!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -87,6 +143,7 @@ export const AdditionWordProblems = () => {
                 <div className="flex-1 flex flex-col justify-center gap-6">
                     {/* Story card */}
                     <motion.div
+                        data-hint-region="story-card"
                         key={roundIdx}
                         initial={{ x: 40, opacity: 0 }}
                         animate={feedback === 'correct'
@@ -110,7 +167,7 @@ export const AdditionWordProblems = () => {
                     )}
                 </div>
 
-                <div className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
+                <div data-hint-region="answer-zone" className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
                     <div className="text-white/50 font-display text-sm text-center">Your answer</div>
                     <Numpad onAnswer={handleAnswer} maxDigits={3} />
                 </div>

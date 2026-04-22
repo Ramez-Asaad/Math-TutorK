@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -6,6 +6,7 @@ import { VOICE_CONFIGS } from '../../utils/lessonVoiceConfigs'
 import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Tool = 'halve' | 'third' | 'fifth' | 'eraser' | 'merge' | null
@@ -142,6 +143,50 @@ export const GridPainter = () => {
         setFeedback('none')
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'grid_split_then_paint',
+            description: 'Divide the shape until there are enough equal pieces, then shade the target count',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="grid-goal"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="grid-goal"]', label: `${problem.numerator}/${problem.denominator}`, color: '#fbbf24' },
+                    ],
+                    speech: `You need ${problem.numerator} shaded out of ${problem.denominator} equal parts.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="grid-tools"]', color: '#a78bfa' },
+                    ],
+                    speech: 'Use divide by two, three, or five to split cells, then tap cells to paint.',
+                },
+            ],
+        },
+        {
+            id: 'grid_check_fraction',
+            description: 'Read the live fraction label and press Check',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="grid-canvas"]', color: '#34d399' },
+                    ],
+                    speech: 'The label shows your current shaded fraction. It should match the goal before you check.',
+                },
+            ],
+        },
+    ], [problem.numerator, problem.denominator])
+
+    const lessonContext = useMemo(() => ({
+        type: 'grid_painter' as const,
+        operands: [problem.numerator, problem.denominator],
+        answer: problem.numerator / problem.denominator,
+        itemCount: cells.length,
+    }), [problem.numerator, problem.denominator, cells.length])
+
     const coloredCount = cells.filter(c => c.color !== null).length
     const fraction = cells.length > 1
         ? `${coloredCount}/${cells.length}`
@@ -149,6 +194,7 @@ export const GridPainter = () => {
 
     return (
         <LessonShell
+            lessonId="grid-painter"
             voiceConfig={VOICE_CONFIGS["grid-painter"]}
             feedback={feedback}
             problemIndex={problemIdx}
@@ -157,6 +203,8 @@ export const GridPainter = () => {
             correct={correctCount}
             accentClass="bg-violet-600"
             subtitle={problem.question}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -168,9 +216,9 @@ export const GridPainter = () => {
 
             <div className="h-full flex gap-4 p-4">
                 {/* ── Sidebar tools ── */}
-                <div className="w-32 flex flex-col gap-3 shrink-0">
+                <div data-hint-region="grid-tools" className="w-32 flex flex-col gap-3 shrink-0">
                     {/* Problem */}
-                    <div className="bg-white/8 rounded-2xl p-3 border border-white/10 text-center">
+                    <div data-hint-region="grid-goal" className="bg-white/8 rounded-2xl p-3 border border-white/10 text-center">
                         <div className="text-white/60 font-display text-xs mb-1">Shade</div>
                         <div className="text-white font-black font-display text-3xl">
                             {problem.numerator}/{problem.denominator}
@@ -261,6 +309,7 @@ export const GridPainter = () => {
 
                     {/* Shape grid */}
                     <div
+                        data-hint-region="grid-canvas"
                         className={`flex-1 grid rounded-2xl border-2 overflow-hidden transition-colors duration-300
               ${feedback === 'correct' ? 'border-emerald-500' : feedback === 'wrong' ? 'border-rose-500' : 'border-white/20'}`}
                         style={{ gridTemplateColumns: `repeat(${Math.min(cells.length, 6)}, 1fr)` }}

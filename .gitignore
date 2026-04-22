@@ -1,5 +1,17 @@
-# Logs
-logs
+# ── Dependencies ───────────────────────────────────────────────
+node_modules/
+
+# ── Build outputs (Vite / frontend) ───────────────────────────
+dist/
+dist-ssr/
+build/
+*.local
+
+# Vite pre-bundle and dev cache
+.vite/
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,22 +19,77 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ── Environment & secrets ────────────────────────────────────
+.env
+.env.*
+!.env.example
 
-# Editor directories and files
+# ── Test & coverage ──────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Caches & misc tooling ────────────────────────────────────
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+
+# ── Editor & OS ──────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Project specific
+# ── Python: bytecode & packaging ─────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.egg
+*.manifest
+*.spec
+*.pyc
+
+# ── Python: virtual environments (never commit) ──────────────
+.venv/
+venv/
+ENV/
+env/
+.server-venv/
+.tts-venv/
+.agent-venv/
+
+# ── Python: test / type / lint caches ───────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+
+
+# ── ML / Hugging Face (downloads & cache) ───────────────────
+.huggingface/
+*.pt
+*.pth
+*.ckpt
+
+# ── Jupyter ──────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Project-specific (local notes / local TTS venv) ──────────
 plan.md
 .tts-venv/

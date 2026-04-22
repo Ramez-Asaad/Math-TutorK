@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { rows: number; cols: number }
 const ROUNDS: Round[] = [
@@ -63,25 +64,73 @@ export const ArrayBuilder = () => {
         reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'array_rows_cols',
+            description: 'Treat rows and columns as the two factors; total cells is the product',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="array-eq"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="array-eq"]', label: `${round.rows}×${round.cols}`, color: '#fbbf24' },
+                    ],
+                    speech: `This rectangle has ${round.rows} rows and ${round.cols} columns.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="array-grid"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Multiply rows times columns — or count every dot once.',
+                },
+            ],
+        },
+        {
+            id: 'array_numpad_total',
+            description: 'Enter the total number of cells',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="array-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Type the product on the keypad.',
+                },
+            ],
+        },
+    ], [round.rows, round.cols])
+
+    const lessonContext = useMemo(() => ({
+        type: 'mult_array' as const,
+        operands: [round.rows, round.cols],
+        answer,
+        itemCount: answer,
+    }), [round.rows, round.cols, answer])
+
     return (
         <LessonShell
+            lessonId="array-builder"
             voiceConfig={VOICE_CONFIGS["arrays"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-blue-600" subtitle={`${round.rows} rows × ${round.cols} columns = ?`}>
+            accentClass="bg-blue-600" subtitle={`${round.rows} rows × ${round.cols} columns = ?`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
             <div className="h-full flex gap-6 p-4">
                 <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                    <motion.div animate={feedback === 'correct' ? { color: '#10b981' } : {}}
+                    <motion.div data-hint-region="array-eq" animate={feedback === 'correct' ? { color: '#10b981' } : {}}
                         className="font-black font-display text-5xl text-white">
                         {round.rows} × {round.cols} = <span className="text-blue-400">?</span>
                     </motion.div>
 
                     {/* Array grid */}
                     <motion.div
+                        data-hint-region="array-grid"
                         animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
                         className="border-2 border-white/10 rounded-3xl p-6"
                     >
@@ -121,7 +170,7 @@ export const ArrayBuilder = () => {
                     )}
                 </div>
 
-                <div className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
+                <div data-hint-region="array-numpad" className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
                     <div className="text-white/50 font-display text-sm">Total dots?</div>
                     <Numpad onAnswer={handleAnswer} maxDigits={2} />
                 </div>

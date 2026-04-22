@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface NegProblem {
@@ -93,14 +94,60 @@ export const NegativeNumbers = () => {
     // Character position percentage
     const charPct = ((characterPos - LINE_MIN) / (LINE_MAX - LINE_MIN)) * 100
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'nn_number_line',
+            description: 'Use the line to relate negatives, zero, and positives',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="nn-question"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="nn-question"]', label: 'Prompt', color: '#fbbf24' },
+                    ],
+                    speech: 'Read whether you are locating, comparing, or computing—each mode uses the line differently.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="nn-line"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Numbers to the left are smaller; walk the robot to match the task.',
+                },
+            ],
+        },
+        {
+            id: 'nn_respond',
+            description: 'Answer using the ticks or the chips in this band',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="nn-response"]', color: '#34d399' },
+                    ],
+                    speech: 'Tap a tick when you are locating a value, or use the chips when the prompt asks for a computed result.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'negative_numbers' as const,
+        currentStep: probIdx,
+        problemMode: problem.type,
+    }), [probIdx, problem.type])
+
     return (
         <LessonShell
+            lessonId="negative-numbers"
             voiceConfig={VOICE_CONFIGS["negative-numbers"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-indigo-700"
             subtitle={problem.question}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -113,6 +160,7 @@ export const NegativeNumbers = () => {
             <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
                 {/* Question */}
                 <motion.div
+                    data-hint-region="nn-question"
                     animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                     transition={SPRING}
                     className="text-center"
@@ -132,8 +180,9 @@ export const NegativeNumbers = () => {
                     )}
                 </motion.div>
 
-                {/* Number line */}
-                <div className="w-full max-w-2xl relative px-4">
+                {/* Number line + answer chips */}
+                <div data-hint-region="nn-response" className="w-full max-w-2xl flex flex-col items-center gap-6">
+                <div data-hint-region="nn-line" className="w-full relative px-4">
                     {/* Character */}
                     <motion.div
                         animate={{ left: `${charPct}%`, y: [0, -6, 0] }}
@@ -217,6 +266,7 @@ export const NegativeNumbers = () => {
                         ))}
                     </div>
                 )}
+                </div>
 
                 {/* Feedback */}
                 <AnimatePresence>

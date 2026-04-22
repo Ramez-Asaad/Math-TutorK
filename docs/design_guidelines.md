@@ -21,7 +21,7 @@ A modern, dark-themed aesthetic with vibrant neon accents. Purposefully designed
 ## 4. Animation Principles
 Every interaction must have visual weight and physics.
 - **Standard Spring**: `type: 'spring', stiffness: 300, damping: 25` (use `SPRING` preset).
-- **Staggering**: Use `delayChilden` and `staggerChildren` for list entries (e.g., Category cards).
+- **Staggering**: Use `delayChildren` and `staggerChildren` for list entries (e.g., category cards).
 - **Feedback**:
     - **Correct**: Confetti + Scaling up.
     - **Wrong**: Subtle shake + Dimming.
@@ -33,5 +33,6 @@ Every interaction must have visual weight and physics.
 - **Glassmorphism**: Use `backdrop-blur-md` and semi-transparent backgrounds for panels and modals.
 
 ## 6. Iconography
-- Use high-quality Emojis for avatars and categories.
-- Use simple, bold SVG paths for UI controls (next/prev).
+
+- Use clear **emoji** for avatars and category accents where they read well at a glance.
+- For compact controls (e.g. tutor toolbar), prefer **small inline SVG** icons with consistent **24×24** viewBox and **currentColor** stroke so they match the glass/dark panels.

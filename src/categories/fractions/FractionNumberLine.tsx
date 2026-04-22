@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { num: number; den: number; choices: [number, number][] }
 const ROUNDS: Round[] = [
@@ -70,23 +71,69 @@ export const FractionNumberLine = () => {
         reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'frac_line_place_value',
+            description: 'Locate the fraction between 0 and 1 using the tick marks',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="fnl-target"]', color: '#f472b6' },
+                        { action: 'label', element: '[data-hint-region="fnl-target"]', label: `${round.num}/${round.den}`, color: '#f472b6' },
+                    ],
+                    speech: `Imagine ${round.num} of ${round.den} equal parts from zero to one.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="fnl-track"]', color: '#fbbf24' },
+                    ],
+                    speech: 'Compare the choices — the correct one matches that distance along the line.',
+                },
+            ],
+        },
+        {
+            id: 'frac_line_choose',
+            description: 'Match a fraction label to the same decimal distance as the target',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="fnl-choices"]', color: '#34d399' },
+                    ],
+                    speech: 'If unsure, simplify mentally or compare to one half and one fourth.',
+                },
+            ],
+        },
+    ], [round.num, round.den])
+
+    const lessonContext = useMemo(() => ({
+        type: 'fraction_number_line' as const,
+        operands: [round.num, round.den],
+        answer: target,
+    }), [round.num, round.den, target])
+
     // Number line from 0 to 1
     const ticks = [0, 0.25, 0.5, 0.75, 1]
     const tickLabels: Record<number, string> = { 0: '0', 0.25: '1/4', 0.5: '1/2', 0.75: '3/4', 1: '1' }
 
     return (
         <LessonShell
+            lessonId="fraction-number-line"
             voiceConfig={VOICE_CONFIGS["fraction-number-line"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-pink-600" subtitle={`Where is ${round.num}/${round.den} on the number line?`}>
+            accentClass="bg-pink-600" subtitle={`Where is ${round.num}/${round.den} on the number line?`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
             <div className="h-full flex flex-col items-center justify-center gap-10 p-6">
                 {/* Target fraction */}
-                <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2, repeat: Infinity }}
+                <motion.div data-hint-region="fnl-target" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2, repeat: Infinity }}
                     className="bg-pink-500/20 border border-pink-400/40 rounded-2xl px-8 py-4 text-center">
                     <div className="text-white/60 font-display text-sm">Place this fraction</div>
                     <div className="text-pink-300 font-black font-display text-5xl">{round.num}/{round.den}</div>
@@ -94,7 +141,7 @@ export const FractionNumberLine = () => {
 
                 {/* Number line */}
                 <div className="w-full max-w-2xl relative px-4">
-                    <div className="h-3 bg-white/10 rounded-full relative">
+                    <div data-hint-region="fnl-track" className="h-3 bg-white/10 rounded-full relative">
                         {ticks.map(t => (
                             <div key={t} className="absolute flex flex-col items-center"
                                 style={{ left: `${t * 100}%`, transform: 'translateX(-50%)' }}>
@@ -116,7 +163,7 @@ export const FractionNumberLine = () => {
                 </div>
 
                 {/* Choices */}
-                <div className="flex gap-4 justify-center flex-wrap">
+                <div data-hint-region="fnl-choices" className="flex gap-4 justify-center flex-wrap">
                     {round.choices.map(([n, d], i) => {
                         const isChosen = chosen && chosen[0] === n && chosen[1] === d
                         return (

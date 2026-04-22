@@ -1,85 +1,116 @@
-# Math Tutor
+# Math Tutor (Math-TutorK)
 
-An interactive math learning platform for kids, built with React, TypeScript, and Vite. Features 40 animated lessons across 9 categories with AI-powered text-to-speech voice guidance.
+Interactive math lessons for elementary learners, built with **React**, **TypeScript**, and **Vite**. The app includes **40 routed lessons** across nine categories, voice guidance via **Pocket TTS**, and an optional **adaptive agent** (Python) that reacts to telemetry and can drive overlays, view swaps, and spoken tutor chat.
+
+## Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/architecture.md](docs/architecture.md) | System diagram, WebSocket protocol, data flow |
+| [docs/prd.md](docs/prd.md) | Product goals, user stories, requirements |
+| [docs/design_guidelines.md](docs/design_guidelines.md) | Visual style, motion, UI tokens |
+| [docs/dev_rules.md](docs/dev_rules.md) | Conventions for components and lessons |
+| [docs/roadmap.md](docs/roadmap.md) | Planned improvements |
+| [docs/report.md](docs/report.md) | High-level project analysis (periodically refreshed) |
 
 ## Features
 
-- 40 interactive lessons covering counting, addition, subtraction, multiplication, division, fractions, place value, algebraic thinking, and number sense
-- Voice-guided instructions using Pocket TTS with the Azelma voice
-- Animated feedback with confetti, sound effects, and encouraging messages
-- Progress tracking with stars and points
-- Responsive design with dark theme
+- **40 lessons** — counting, place value, addition, subtraction, multiplication, division, fractions, algebraic thinking, number sense (see `src/App.tsx` for routes).
+- **Voice guidance** — Pocket TTS (“azelma” voice) via the dev proxy path `/pocket-tts` → `http://localhost:8000`. Falls back to **text-only** if TTS is offline.
+- **Tutor panel** — typewriter-style captions, optional **text chat** with the agent, **mic/STT mute** (server ignores microphone phrases), and **speaker mute** (TTS audio off, captions still run).
+- **Progress** — stars, session points, streaks, persisted child profile (Zustand + `localStorage` where configured).
+- **Adaptive agent** (optional) — browser **telemetry** every 3s, rule-based **visual commands** (`annotate` / `swap` / `teach`), **LLM** replies for chat and speech-driven input when the agent stack is running.
 
-## Tech Stack
+## Tech stack
 
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS
-- Framer Motion (animations)
-- Zustand (state management)
-- Pocket TTS (text-to-speech)
+- React 18, TypeScript, Vite 5, Tailwind CSS 3  
+- Framer Motion, Zustand, @dnd-kit, Howler (SFX)  
+- **Frontend TTS** — HTTP to Pocket TTS (see `src/utils/ttsClient.ts`)  
+- **Agent server** — FastAPI + Uvicorn, WebSocket `ws://localhost:8001/ws/agent`, Moonshine STT on the **machine running the server** (see `server/main.py`)
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- **Node.js 18+**
+- **Pocket TTS** (or compatible serve API on port **8000**) if you want voice audio  
+- **Python 3.10+** and **pip** if you want the adaptive agent / chat / server STT  
+- **Ollama** (local) if you want **LLM**-generated tutor replies — the agent defaults to a configured model (see `server/main.py`)
 
-- Node.js 18+
-- Python 3.12 (for TTS server)
-- uv (Python package manager) - https://docs.astral.sh/uv/
-
-### Installation
+## Install
 
 ```bash
 npm install
 ```
 
-### Running
+## Running locally
 
-Start the TTS server (Terminal 1):
-
-```bash
-./start-tts.sh
-```
-
-Start the development server (Terminal 2):
+### 1. Frontend (required)
 
 ```bash
 npm run dev
 ```
 
-The app will be available at http://localhost:5173
+Open **http://localhost:5173** (Vite default).
 
-### Building for Production
+### 2. Pocket TTS (optional — for voice audio)
+
+**Linux / macOS**
+
+```bash
+./start-tts.sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+.\start-tts.ps1
+```
+
+### 3. Adaptive agent (optional — telemetry, annotations, chat, server STT)
+
+**Linux / macOS**
+
+```bash
+./start-agent.sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+.\start-agent.ps1
+```
+
+This creates `server/.agent-venv`, installs `server/requirements.txt`, and starts Uvicorn on **port 8001**. The virtualenv is **gitignored** — do not commit it.
+
+The React app expects the agent at **`ws://localhost:8001/ws/agent`** (see `src/hooks/useAgentSocket.ts`).
+
+## Build
 
 ```bash
 npm run build
 ```
 
-## Project Structure
+Output in `dist/`. Run `npm run preview` to smoke-test the production bundle.
+
+## Project layout (abbreviated)
 
 ```
 src/
-  categories/         # 40 lesson components organized by math topic
-    addition/         # Object combining, number bonds, making ten, column addition, word problems
-    subtraction/      # Takeaway, number line jumps, ten frame, column subtraction, missing number
-    multiplication/   # Equal groups, arrays, square numbers, times table, flashcards, magic square
-    division/         # Dot grouper, fair share, repeated subtraction, fact family
-    counting/         # Dot counter, number line, comparison, skip counting
-    fractions/        # Grid painter, comparator, fraction number line, equivalent, mixed numbers
-    place-value/      # Dot builder, expanded form, hieroglyphs, rounding
-    algebraic/        # Patterns, balance scale, function machine, missing number
-    number-sense/     # Primes, negative numbers, word problems
+  App.tsx                 # Router — 40 lesson routes + home
+  screens/                # Home hub
+  categories/             # One folder per curriculum strand (lesson components)
   components/
-    layout/           # LessonShell, TutorPanel, LessonCanvas
-    shared/           # Numpad, Confetti, LessonComplete
-  hooks/              # useTutorVoice
-  store/              # Zustand stores for scores and progress
-  utils/              # TTS client, lesson voice configs
+    layout/               # LessonShell, LessonCanvas, TutorPanel, overlays
+    shared/               # Numpad, confetti, tutor voice UI, etc.
+  hooks/                  # useTutorVoice, useTelemetry, useAgentSocket, …
+  store/                  # Zustand stores (progress, difficulty, child, score)
+  types/visualCommand.ts  # Agent ↔ client types (commands, telemetry, chat)
+  utils/                  # ttsClient, math helpers, voice configs, …
+server/
+  main.py                 # FastAPI app: WebSocket agent, STT loop, Ollama
+  requirements.txt
+public/
+  dashboard.html          # Optional standalone dashboard (separate from Vite app)
 ```
-
-## TTS Server
-
-The app uses Pocket TTS for voice instructions. The TTS server runs locally on port 8000 and uses the Azelma female voice for a warm, encouraging tone. If the TTS server is not running, the app falls back to text-only mode.
 
 ## License
 

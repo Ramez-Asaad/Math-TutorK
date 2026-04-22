@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface WordProblem {
@@ -106,14 +107,60 @@ export const WordProblems = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setShowHint(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'wp_read_model',
+            description: 'Turn the story into an equation before calculating',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="wp-story"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="wp-story"]', label: 'Story', color: '#fbbf24' },
+                    ],
+                    speech: 'Underline what changes and what stays the same, then match it to an operation.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="wp-equation"]', color: '#60a5fa' },
+                    ],
+                    speech: 'The highlighted line is the model—fill in the number that answers the question.',
+                },
+            ],
+        },
+        {
+            id: 'wp_submit_answer',
+            description: 'Enter the numeric result on the keypad',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="wp-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Type your answer and submit when the story and equation agree.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'word_problems' as const,
+        currentStep: probIdx,
+        answer: problem.answer,
+    }), [probIdx, problem.answer])
+
     return (
         <LessonShell
+            lessonId="word-problems"
             voiceConfig={VOICE_CONFIGS["word-problems-ns"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-indigo-700"
             subtitle="Read the story and solve!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -128,6 +175,7 @@ export const WordProblems = () => {
                 <div className="flex-1 flex flex-col gap-4">
                     <AnimatePresence mode="wait">
                         <motion.div
+                            data-hint-region="wp-story"
                             key={probIdx}
                             initial={{ x: 40, opacity: 0 }}
                             animate={
@@ -157,6 +205,7 @@ export const WordProblems = () => {
 
                             {/* Equation highlight */}
                             <motion.div
+                                data-hint-region="wp-equation"
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ ...SPRING, delay: 0.2 }}
@@ -198,6 +247,7 @@ export const WordProblems = () => {
                 <div className="w-64 flex flex-col gap-4 justify-center">
                     <div className="text-white/40 font-display text-sm text-center">Your answer:</div>
                     <motion.div
+                        data-hint-region="wp-numpad"
                         animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                         transition={SPRING}
                     >

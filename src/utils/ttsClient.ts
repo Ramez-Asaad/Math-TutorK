@@ -4,7 +4,9 @@
  * Falls back gracefully to text-only when the TTS server is unreachable.
  */
 
-const TTS_BASE_URL = 'http://localhost:8000'
+// Proxied through Vite dev server to avoid CORS preflight issues.
+// Vite config maps /tts → http://localhost:8000/tts
+//                   /tts-health → http://localhost:8000/
 const TTS_VOICE = 'azelma'
 
 /* ─── Audio cache ────────────────────────────────────────────── */
@@ -19,7 +21,7 @@ export async function isTTSAvailable(): Promise<boolean> {
     const now = Date.now()
     if (serverAvailable !== null && now - lastCheck < CHECK_INTERVAL) return serverAvailable
     try {
-        const res = await fetch(TTS_BASE_URL, { method: 'GET', signal: AbortSignal.timeout(1500) })
+        const res = await fetch('/pocket-tts/', { method: 'GET', signal: AbortSignal.timeout(1500) })
         serverAvailable = res.ok
     } catch {
         serverAvailable = false
@@ -40,7 +42,7 @@ export async function generateSpeech(text: string): Promise<ArrayBuffer | null> 
         formData.append('text', text)
         formData.append('voice', TTS_VOICE)
 
-        const res = await fetch(`${TTS_BASE_URL}/tts`, {
+        const res = await fetch('/pocket-tts/tts', {
             method: 'POST',
             body: formData,
             signal: AbortSignal.timeout(8000),
@@ -68,20 +70,55 @@ export function preCacheAudio(texts: string[]) {
 /* ─── Play audio buffer ──────────────────────────────────────── */
 let currentSource: AudioBufferSourceNode | null = null
 let audioCtx: AudioContext | null = null
+let unlocked = false
 
 function getAudioContext(): AudioContext {
     if (!audioCtx) audioCtx = new AudioContext()
     return audioCtx
 }
 
+// Browsers require a user gesture before AudioContext can play audio.
+// Attach a one-time listener on any interaction to unlock the context.
+function ensureUnlockListener() {
+    if (unlocked) return
+    const unlock = () => {
+        const ctx = getAudioContext()
+        if (ctx.state === 'suspended') {
+            ctx.resume()
+        }
+        // Play a silent buffer to fully unlock on iOS/Safari
+        const silent = ctx.createBuffer(1, 1, 22050)
+        const src = ctx.createBufferSource()
+        src.buffer = silent
+        src.connect(ctx.destination)
+        src.start()
+        unlocked = true
+        for (const evt of ['click', 'touchstart', 'keydown', 'mousedown']) {
+            document.removeEventListener(evt, unlock, true)
+        }
+    }
+    for (const evt of ['click', 'touchstart', 'keydown', 'mousedown']) {
+        document.addEventListener(evt, unlock, { capture: true, once: false, passive: true })
+    }
+}
+
+// Start listening immediately on module load
+ensureUnlockListener()
+
 export async function playAudio(buffer: ArrayBuffer): Promise<void> {
-    // Stop any currently playing audio
     stopAudio()
 
     const ctx = getAudioContext()
-    if (ctx.state === 'suspended') await ctx.resume()
+    if (ctx.state === 'suspended') {
+        await ctx.resume()
+        // If still suspended after resume (no user gesture yet), bail
+        if (ctx.state === 'suspended') {
+            console.warn('[TTS] AudioContext suspended — waiting for user interaction')
+            return
+        }
+    }
 
-    const audioBuffer = await ctx.decodeAudioData(buffer.slice(0)) // .slice(0) to copy since decodeAudioData detaches
+    const audioBuffer = await ctx.decodeAudioData(buffer.slice(0))
     const source = ctx.createBufferSource()
     source.buffer = audioBuffer
     source.connect(ctx.destination)

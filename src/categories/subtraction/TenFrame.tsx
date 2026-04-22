@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { filled: number; remove: number }
 const ROUNDS: Round[] = [
@@ -65,24 +66,73 @@ export const TenFrame = () => {
 
     const remaining = round.filled - removed.size
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'ten_frame_sub_meaning',
+            description: 'Relate “take away” to tapping filled cells in the frame',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="sub-equation"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="sub-equation"]', label: `${round.filled} − ${round.remove}`, color: '#fbbf24' },
+                    ],
+                    speech: `Start with ${round.filled} in the frame. You will remove ${round.remove}.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ten-frame-grid"]', color: '#fb923c' },
+                        { action: 'label', element: '[data-hint-region="ten-frame-grid"]', label: 'Tap orange dots', color: '#fb923c' },
+                    ],
+                    speech: `Tap ${round.remove} filled cells — each click takes one away.`,
+                },
+            ],
+        },
+        {
+            id: 'ten_frame_sub_remaining',
+            description: 'Connect taps left to the running total in the equation',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="sub-equation"]', color: '#34d399' },
+                    ],
+                    speech: `After removing, you should see ${remaining} left in the frame and in the answer.`,
+                },
+            ],
+        },
+    ], [round.filled, round.remove, remaining])
+
+    const lessonContext = useMemo(() => ({
+        type: 'ten_frame_sub' as const,
+        operands: [round.filled, round.remove],
+        answer: round.filled - round.remove,
+        itemCount: round.filled,
+    }), [round.filled, round.remove])
+
     return (
         <LessonShell
+            lessonId="ten-frame"
             voiceConfig={VOICE_CONFIGS["ten-frame"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-orange-600" subtitle={`${round.filled} − ${round.remove} — click to remove!`}>
+            accentClass="bg-orange-600" subtitle={`${round.filled} − ${round.remove} — click to remove!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
             <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
-                <motion.div animate={feedback === 'correct' ? { color: '#10b981' } : {}}
+                <motion.div data-hint-region="sub-equation" animate={feedback === 'correct' ? { color: '#10b981' } : {}}
                     className="font-black font-display text-5xl text-white">
                     {round.filled} − {round.remove} = <span className="text-orange-400">{remaining}</span>
                 </motion.div>
 
                 {/* Ten frame */}
                 <motion.div
+                    data-hint-region="ten-frame-grid"
                     animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
                     className="grid grid-cols-5 gap-2 border-2 border-white/20 rounded-2xl p-4"
                 >

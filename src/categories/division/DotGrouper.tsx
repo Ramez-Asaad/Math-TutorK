@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -6,6 +6,7 @@ import { VOICE_CONFIGS } from '../../utils/lessonVoiceConfigs'
 import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type DotType = 'red' | 'purple'
@@ -173,8 +174,53 @@ export const DotGrouper = () => {
 
     const completedGroupCount = groups.filter(g => g.dotIds.length === problem.groupSize).length
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'dot_group_size',
+            description: 'Form groups with exactly the target count by pairing dots',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="dg-goal"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="dg-goal"]', label: `Groups of ${problem.groupSize}`, color: '#fbbf24' },
+                    ],
+                    speech: `You need groups of ${problem.groupSize}. Tap two matching dots to link them into a group.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="dg-canvas"]', color: '#60a5fa' },
+                    ],
+                    speech: `When every dot is grouped, you should have ${expectedGroups} groups — that is the quotient.`,
+                },
+            ],
+        },
+        {
+            id: 'dg_track_groups',
+            description: 'Use the sidebar checklist to see how many complete groups you have',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="dg-counter"]', color: '#34d399' },
+                    ],
+                    speech: 'Each bar fills when a full group is made.',
+                },
+            ],
+        },
+    ], [problem.groupSize, expectedGroups])
+
+    const lessonContext = useMemo(() => ({
+        type: 'dot_grouper' as const,
+        operands: [problem.total, problem.divisor],
+        answer: expectedGroups,
+        itemCount: problem.total,
+    }), [problem.total, problem.divisor, expectedGroups])
+
     return (
         <LessonShell
+            lessonId="dot-grouper"
             voiceConfig={VOICE_CONFIGS["dot-grouper"]}
             problemIndex={problemIdx}
             total={PROBLEMS.length}
@@ -182,6 +228,8 @@ export const DotGrouper = () => {
             correct={correct}
             accentClass="bg-rose-600"
             subtitle={`${problem.total} ÷ ${problem.divisor} — group the dots!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -195,13 +243,13 @@ export const DotGrouper = () => {
                 {/* ── Sidebar ── */}
                 <div className="w-32 flex flex-col gap-4 shrink-0">
                     {/* Problem display */}
-                    <div className="bg-white/8 rounded-2xl p-3 border border-white/10 text-center">
+                    <div data-hint-region="dg-goal" className="bg-white/8 rounded-2xl p-3 border border-white/10 text-center">
                         <div className="text-white font-black font-display text-2xl">{problem.total} ÷ {problem.divisor}</div>
                         <div className="text-white/40 font-display text-xs mt-1">Make groups of {problem.groupSize}</div>
                     </div>
 
                     {/* Group counter */}
-                    <div className="bg-white/8 rounded-2xl p-3 border border-white/10">
+                    <div data-hint-region="dg-counter" className="bg-white/8 rounded-2xl p-3 border border-white/10">
                         <div className="text-white/50 font-display text-xs mb-2 text-center">Groups made</div>
                         <div className="flex flex-col gap-2">
                             {Array.from({ length: expectedGroups }, (_, i) => (
@@ -226,7 +274,7 @@ export const DotGrouper = () => {
                 </div>
 
                 {/* ── Canvas ── */}
-                <div className="flex-1 relative bg-white/3 rounded-2xl border border-white/8 overflow-hidden">
+                <div data-hint-region="dg-canvas" className="flex-1 relative bg-white/3 rounded-2xl border border-white/8 overflow-hidden">
                     {/* Group rings */}
                     {groups.filter(g => g.dotIds.length === problem.groupSize).map((group) => {
                         const groupDots = dots.filter(d => group.dotIds.includes(d.id))

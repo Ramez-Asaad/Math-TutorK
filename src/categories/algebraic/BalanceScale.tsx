@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface BalanceProblem {
@@ -99,14 +100,60 @@ export const BalanceScale = () => {
 
     const balanced = feedback === 'correct'
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'bs_equal_pans',
+            description: 'Total the known blocks on each side to infer the unknown weight',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="bs-scale"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="bs-scale"]', label: 'Balance', color: '#fbbf24' },
+                    ],
+                    speech: 'The beam tips when the sides are unequal—picture what must sit in the dashed block.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="bs-scale"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Add the weights you already know on each pan before guessing the missing piece.',
+                },
+            ],
+        },
+        {
+            id: 'bs_enter_mass',
+            description: 'Type the missing value on the keypad',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="bs-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Enter the number that makes both sides match.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'balance_scale' as const,
+        unknownSide: problem.unknownSide,
+        answer: problem.answer,
+    }), [problem.unknownSide, problem.answer])
+
     return (
         <LessonShell
+            lessonId="balance-scale"
             voiceConfig={VOICE_CONFIGS["balance-scale"]}
             feedback={feedback}
-            problemIndex={idx}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-teal-600"
             subtitle="Find the missing weight to balance the scale!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -120,6 +167,7 @@ export const BalanceScale = () => {
                 {/* Scale visual */}
                 <AnimatePresence mode="wait">
                     <motion.div
+                        data-hint-region="bs-scale"
                         key={probIdx}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -187,6 +235,7 @@ export const BalanceScale = () => {
 
                 {/* Numpad */}
                 <motion.div
+                    data-hint-region="bs-numpad"
                     animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                     transition={SPRING}
                     className="w-full max-w-xs"

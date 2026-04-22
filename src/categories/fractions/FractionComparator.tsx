@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useCallback, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
 import { VOICE_CONFIGS } from '../../utils/lessonVoiceConfigs'
@@ -7,8 +7,9 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
-interface Round { a: [number, number]; b: [number, number] } // [num, den]
+interface Round { a: [number, number]; b: [number, number] }
 const ROUNDS: Round[] = [
     { a: [1, 2], b: [1, 4] }, { a: [3, 4], b: [2, 4] }, { a: [1, 3], b: [2, 3] },
     { a: [2, 5], b: [3, 5] }, { a: [1, 2], b: [3, 4] }, { a: [2, 3], b: [3, 4] },
@@ -17,6 +18,7 @@ const ROUNDS: Round[] = [
 ]
 
 type Answer = '<' | '=' | '>'
+type ViewMode = 'bar' | 'pizza' | 'worked_example'
 
 function compare(a: [number, number], b: [number, number]): Answer {
     const va = a[0] / a[1], vb = b[0] / b[1]
@@ -25,13 +27,16 @@ function compare(a: [number, number], b: [number, number]): Answer {
     return '='
 }
 
-function FractionBar({ num, den, color }: { num: number; den: number; color: string }) {
+/* ── View 1: Fraction Bars (default) ────────────────────────── */
+
+function FractionBar({ num, den, color, side }: { num: number; den: number; color: string; side?: string }) {
     return (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2" data-key-step data-fraction-side={side}>
             <div className="w-48 h-10 flex rounded-xl overflow-hidden border-2" style={{ borderColor: color + '60' }}>
                 {Array.from({ length: den }, (_, i) => (
                     <motion.div
                         key={i}
+                        data-item={`${side}-${i}`}
                         initial={{ scaleX: 0 }}
                         animate={{ scaleX: 1 }}
                         transition={{ delay: i * 0.05, duration: 0.3 }}
@@ -50,6 +55,77 @@ function FractionBar({ num, den, color }: { num: number; den: number; color: str
     )
 }
 
+/* ── View 2: Pizza / Pie visualization (swap target) ─────────── */
+
+function PizzaSlice({ num, den, color, size = 140 }: { num: number; den: number; color: string; size?: number }) {
+    const r = size / 2
+    const slices = Array.from({ length: den }, (_, i) => {
+        const startAngle = (i / den) * 360 - 90
+        const endAngle = ((i + 1) / den) * 360 - 90
+        const startRad = (startAngle * Math.PI) / 180
+        const endRad = (endAngle * Math.PI) / 180
+        const x1 = r + r * Math.cos(startRad)
+        const y1 = r + r * Math.sin(startRad)
+        const x2 = r + r * Math.cos(endRad)
+        const y2 = r + r * Math.sin(endRad)
+        const largeArc = endAngle - startAngle > 180 ? 1 : 0
+        const d = `M ${r} ${r} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
+        return (
+            <motion.path
+                key={i}
+                d={d}
+                fill={i < num ? color : 'rgba(255,255,255,0.08)'}
+                stroke="rgba(255,255,255,0.15)"
+                strokeWidth={1.5}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.06, duration: 0.3 }}
+            />
+        )
+    })
+
+    return (
+        <div className="flex flex-col items-center gap-2" data-key-step>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                {slices}
+            </svg>
+            <div className="font-black font-display text-2xl" style={{ color }}>
+                {num}/{den}
+            </div>
+        </div>
+    )
+}
+
+/* ── View 3: Worked Example ──────────────────────────────────── */
+
+function WorkedExample({ a, b, answer }: { a: [number, number]; b: [number, number]; answer: Answer }) {
+    const va = a[0] / a[1]
+    const vb = b[0] / b[1]
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-4 bg-white/5 rounded-2xl p-6 border border-white/10 max-w-md"
+            data-key-step
+        >
+            <div className="text-white/60 font-display text-sm font-bold uppercase tracking-wider">Step-by-step</div>
+            <div className="text-white font-display">
+                <span className="text-blue-400 font-bold">{a[0]}/{a[1]}</span> = {va.toFixed(3)}
+            </div>
+            <div className="text-white font-display">
+                <span className="text-pink-400 font-bold">{b[0]}/{b[1]}</span> = {vb.toFixed(3)}
+            </div>
+            <div className="h-px bg-white/10" />
+            <div className="text-white font-display">
+                Since {va.toFixed(3)} {answer} {vb.toFixed(3)}, the answer is{' '}
+                <span className="text-emerald-400 font-black text-xl">{answer}</span>
+            </div>
+        </motion.div>
+    )
+}
+
+/* ── Main component ──────────────────────────────────────────── */
+
 export const FractionComparator = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
@@ -60,6 +136,19 @@ export const FractionComparator = () => {
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    /* ── Adaptive view switching (controlled by the agent) ─── */
+    const [viewMode, setViewMode] = useState<ViewMode>('bar')
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view' || target === 'pizza_fraction_view') {
+            setViewMode('pizza')
+        } else if (target === 'worked_example') {
+            setViewMode('worked_example')
+        } else if (target === 'challenge_view' || target === 'default') {
+            setViewMode('bar')
+        }
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const correct = compare(round.a, round.b)
@@ -94,49 +183,184 @@ export const FractionComparator = () => {
     }, [feedback, correct, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false); setViewMode('bar')
     }
+
+    /* ── Render the active visualization ─────────────────────── */
+    const renderVisualization = () => {
+        switch (viewMode) {
+            case 'pizza':
+                return (
+                    <>
+                        <PizzaSlice num={round.a[0]} den={round.a[1]} color="#60a5fa" />
+                        <div className="flex flex-col gap-3" data-answer-area>
+                            {(['<', '=', '>'] as Answer[]).map(sym => (
+                                <motion.button
+                                    key={sym} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                    onClick={() => handleGuess(sym)}
+                                    className={`w-14 h-14 rounded-xl border-2 font-black font-display text-2xl transition-all
+                                        ${chosen === sym
+                                            ? feedback === 'correct' ? 'bg-emerald-500 border-emerald-400 text-white'
+                                                : 'bg-rose-600 border-rose-400 text-white'
+                                            : 'bg-white/8 border-white/20 text-white hover:bg-white/15'}`}
+                                >{sym}</motion.button>
+                            ))}
+                        </div>
+                        <PizzaSlice num={round.b[0]} den={round.b[1]} color="#f472b6" />
+                    </>
+                )
+            case 'worked_example':
+                return (
+                    <div className="flex flex-col items-center gap-6">
+                        <WorkedExample a={round.a} b={round.b} answer={correct} />
+                        <motion.button
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            onClick={() => setViewMode('bar')}
+                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-sm"
+                        >Got it — let me try!</motion.button>
+                    </div>
+                )
+            default:
+                return (
+                    <>
+                        <FractionBar num={round.a[0]} den={round.a[1]} color="#60a5fa" side="left" />
+                        <div className="flex flex-col gap-3" data-answer-area>
+                            {(['<', '=', '>'] as Answer[]).map(sym => (
+                                <motion.button
+                                    key={sym} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                    onClick={() => handleGuess(sym)}
+                                    className={`w-14 h-14 rounded-xl border-2 font-black font-display text-2xl transition-all
+                                        ${chosen === sym
+                                            ? feedback === 'correct' ? 'bg-emerald-500 border-emerald-400 text-white'
+                                                : 'bg-rose-600 border-rose-400 text-white'
+                                            : 'bg-white/8 border-white/20 text-white hover:bg-white/15'}`}
+                                >{sym}</motion.button>
+                            ))}
+                        </div>
+                        <FractionBar num={round.b[0]} den={round.b[1]} color="#f472b6" side="right" />
+                    </>
+                )
+        }
+    }
+
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'count_parts',
+            description: 'Highlight each shaded part one-by-one for both fractions',
+            generate: () => {
+                const steps = []
+                for (let i = 0; i < round.a[0]; i++) {
+                    steps.push({
+                        delay: i === 0 ? 0 : 700,
+                        annotations: [
+                            { action: 'highlight' as const, element: `[data-item="left-${i}"]`, color: '#60a5fa' },
+                            { action: 'label' as const, element: `[data-item="left-${i}"]`, label: `${i + 1}`, color: '#60a5fa' },
+                        ],
+                        speech: i === 0 ? `Left fraction: ${round.a[0]} out of ${round.a[1]}. Count: one` : `${i + 1}`,
+                    })
+                }
+                for (let i = 0; i < round.b[0]; i++) {
+                    steps.push({
+                        delay: 700,
+                        annotations: [
+                            { action: 'highlight' as const, element: `[data-item="right-${i}"]`, color: '#f472b6' },
+                            { action: 'label' as const, element: `[data-item="right-${i}"]`, label: `${i + 1}`, color: '#f472b6' },
+                        ],
+                        speech: i === 0 ? `Right fraction: ${round.b[0]} out of ${round.b[1]}. Count: one` : `${i + 1}`,
+                    })
+                }
+                return steps
+            },
+        },
+        {
+            id: 'compare_sizes',
+            description: 'Pulse both fractions and label which is bigger',
+            generate: () => {
+                const answer = compare(round.a, round.b)
+                const explanation = answer === '<' ? 'The right one is bigger!'
+                    : answer === '>' ? 'The left one is bigger!'
+                    : 'They are equal!'
+                return [
+                    {
+                        delay: 0,
+                        annotations: [
+                            { action: 'pulse' as const, element: '[data-fraction-side="left"]', color: '#60a5fa' },
+                            { action: 'pulse' as const, element: '[data-fraction-side="right"]', color: '#f472b6' },
+                        ],
+                        speech: `Compare ${round.a[0]} over ${round.a[1]} with ${round.b[0]} over ${round.b[1]}.`,
+                    },
+                    {
+                        delay: 2000,
+                        annotations: [
+                            { action: 'label' as const, element: '[data-answer-area]', label: explanation, color: '#34d399' },
+                        ],
+                        speech: explanation,
+                    },
+                ]
+            },
+        },
+    ], [round])
+
+    const lessonContext = useMemo(() => ({
+        type: 'fraction' as const,
+        operands: [round.a[0], round.a[1], round.b[0], round.b[1]],
+    }), [round])
 
     return (
         <LessonShell
+            lessonId="fraction-comparator"
             voiceConfig={VOICE_CONFIGS["comparator"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-pink-600" subtitle="Which fraction is bigger? Pick < = >">
+            accentClass="bg-pink-600" subtitle="Which fraction is bigger? Pick < = >"
+            onSwapView={handleSwapView}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
+        >
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
-            <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
+            <div className="h-full flex flex-col items-center justify-center gap-8 p-6" data-lesson-focus>
+                {/* View mode indicator */}
+                <AnimatePresence mode="wait">
+                    {viewMode !== 'bar' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10"
+                        >
+                            <span className="text-[10px] font-display text-white/50 uppercase tracking-wider">
+                                {viewMode === 'pizza' ? '🍕 Pizza view' : '📝 Worked example'}
+                            </span>
+                            <button onClick={() => setViewMode('bar')} className="text-white/30 hover:text-white/60 text-xs">✕</button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 <motion.div
                     animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
                     className="flex items-center gap-8 border-2 border-white/10 rounded-3xl p-8"
                 >
-                    <FractionBar num={round.a[0]} den={round.a[1]} color="#60a5fa" />
-
-                    <div className="flex flex-col gap-3">
-                        {(['<', '=', '>'] as Answer[]).map(sym => (
-                            <motion.button
-                                key={sym}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleGuess(sym)}
-                                className={`w-14 h-14 rounded-xl border-2 font-black font-display text-2xl transition-all
-                  ${chosen === sym
-                                        ? feedback === 'correct' ? 'bg-emerald-500 border-emerald-400 text-white'
-                                            : 'bg-rose-600 border-rose-400 text-white'
-                                        : 'bg-white/8 border-white/20 text-white hover:bg-white/15'}`}
-                            >
-                                {sym}
-                            </motion.button>
-                        ))}
-                    </div>
-
-                    <FractionBar num={round.b[0]} den={round.b[1]} color="#f472b6" />
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={viewMode}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex items-center gap-8"
+                        >
+                            {renderVisualization()}
+                        </motion.div>
+                    </AnimatePresence>
                 </motion.div>
 
-                <div className="text-white/40 font-display text-sm">
-                    Hint: think about how much of the bar is colored
+                <div className="text-white/40 font-display text-sm" data-hint-region>
+                    {viewMode === 'pizza'
+                        ? 'Hint: which pizza has more slices filled?'
+                        : 'Hint: think about how much of the bar is colored'}
                 </div>
 
                 <div className="flex gap-6 text-sm font-display">

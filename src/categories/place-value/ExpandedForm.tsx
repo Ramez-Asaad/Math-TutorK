@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { AnimatedCounter } from '../../components/shared/AnimatedCounter'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 import { SPRING } from '../../utils/animationPresets'
 
 /* ─── Place value columns ────────────────────────────────────── */
@@ -80,14 +81,60 @@ export const ExpandedForm = () => {
     const parts = PLACES.map((p, i) => values[i] * p.mult).filter(v => v > 0)
     const expandedStr = parts.length > 0 ? parts.join(' + ') : '0'
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'ef_place_steppers',
+            description: 'Adjust each place value so the expanded parts add to the target',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ef-equation"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="ef-equation"]', label: 'Expanded', color: '#fbbf24' },
+                    ],
+                    speech: 'The expanded form shows each place as a separate term—watch it update as you step.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ef-steppers"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Use plus and minus to set how many thousands, hundreds, tens, and ones you need.',
+                },
+            ],
+        },
+        {
+            id: 'ef_match_target',
+            description: 'Confirm the total equals the target before checking',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="ef-target"]', color: '#34d399' },
+                    ],
+                    speech: 'When the sum matches the target row, press check.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'expanded_form' as const,
+        operands: [problem.target],
+        answer: problem.target,
+    }), [problem.target])
+
     return (
         <LessonShell
+            lessonId="expanded-form"
             voiceConfig={VOICE_CONFIGS["expanded-form"]}
             feedback={feedback}
-            problemIndex={idx}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-violet-700"
             subtitle={`Build: ${problem.hint}`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -100,6 +147,7 @@ export const ExpandedForm = () => {
             <div className="h-full flex flex-col gap-4 p-4">
                 {/* Equation display */}
                 <motion.div
+                    data-hint-region="ef-equation"
                     animate={
                         feedback === 'correct'
                             ? { borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)', x: 0 }
@@ -127,7 +175,7 @@ export const ExpandedForm = () => {
                 </motion.div>
 
                 {/* Blob display + Steppers */}
-                <div className="flex-1 grid grid-cols-4 gap-4">
+                <div data-hint-region="ef-steppers" className="flex-1 grid grid-cols-4 gap-4">
                     {PLACES.map((place, i) => (
                         <motion.div
                             key={place.label}
@@ -203,7 +251,7 @@ export const ExpandedForm = () => {
                 </div>
 
                 {/* Target row */}
-                <div className="flex items-center justify-between bg-white/5 rounded-2xl px-6 py-3 border border-white/10">
+                <div data-hint-region="ef-target" className="flex items-center justify-between bg-white/5 rounded-2xl px-6 py-3 border border-white/10">
                     <span className="text-white/60 font-display font-bold">Target: <span className="text-white text-2xl font-black ml-2">{problem.target}</span></span>
                     <motion.button
                         whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}

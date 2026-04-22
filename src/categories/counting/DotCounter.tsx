@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,9 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
+
+const SPOKEN_NUMBERS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
 
 const DOT_COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#60a5fa', '#c084fc', '#f472b6']
 const DOT_SHAPES = ['circle', 'star', 'square', 'heart']
@@ -113,8 +116,44 @@ export const DotCounter = () => {
         setShowCount(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'count_items',
+            description: 'Circle each dot one-by-one and count out loud',
+            generate: () => dots.map((dot, i) => ({
+                delay: i === 0 ? 0 : 800,
+                annotations: [
+                    { action: 'circle' as const, element: `[data-item="${dot.id}"]`, color: '#34d399' },
+                    { action: 'label' as const, element: `[data-item="${dot.id}"]`, label: `${i + 1}`, color: '#34d399' },
+                ],
+                speech: i === 0
+                    ? `Let's count together! ${SPOKEN_NUMBERS[i] ?? String(i + 1)}`
+                    : SPOKEN_NUMBERS[i] ?? String(i + 1),
+            })),
+        },
+        {
+            id: 'highlight_answer',
+            description: 'Circle the answer area and show the total count',
+            generate: () => [{
+                delay: 0,
+                annotations: [
+                    { action: 'pulse' as const, element: '[data-answer-area]', color: '#facc15' },
+                    { action: 'label' as const, element: '[data-answer-area]', label: `There are ${dots.length}!`, color: '#facc15' },
+                ],
+                speech: `There are ${dots.length} shapes! Try typing ${dots.length}.`,
+            }],
+        },
+    ], [dots])
+
+    const lessonContext = useMemo(() => ({
+        type: 'counting' as const,
+        itemCount: dots.length,
+        answer: dots.length,
+    }), [dots.length])
+
     return (
         <LessonShell
+            lessonId="dot-counter"
             voiceConfig={VOICE_CONFIGS["dot-counter"]}
             feedback={feedback}
             problemIndex={roundIdx}
@@ -123,6 +162,8 @@ export const DotCounter = () => {
             correct={correctCount}
             accentClass="bg-amber-500"
             subtitle="Count the dots and type the number!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -150,6 +191,7 @@ export const DotCounter = () => {
                         {dots.map((dot) => (
                             <motion.div
                                 key={`${roundIdx}-${dot.id}`}
+                                data-item={dot.id}
                                 initial={{ scale: 0, opacity: 0, rotate: -180 }}
                                 animate={{ scale: dot.scale, opacity: 1, rotate: 0, y: [0, -4, 0] }}
                                 exit={{ scale: 0, opacity: 0 }}
@@ -191,7 +233,7 @@ export const DotCounter = () => {
                 </motion.div>
 
                 {/* ── Numpad ── */}
-                <div className="flex flex-col items-center justify-center gap-4 w-48 shrink-0">
+                <div className="flex flex-col items-center justify-center gap-4 w-48 shrink-0" data-answer-area>
                     <div className="text-white/50 font-display text-sm text-center">How many?</div>
                     <Numpad onAnswer={handleAnswer} maxDigits={2} />
                     <div className="flex justify-around w-full text-sm font-display mt-2">

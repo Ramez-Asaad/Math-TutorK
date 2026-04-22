@@ -17,7 +17,10 @@
 - [ ] **Exportable Reports**: Generate a simple PDF "Report Card" for offline use.
 - [ ] **Offline Mode (PWA)**: Full Service Worker support to allow learning without an internet connection (requires pre-caching TTS common phrases).
 
-## Phase 4: AI & Advanced Learning (Future)
-- [ ] **LLM Hinting**: Instead of static hints, use an LLM to generate dynamic, contextual hints based on the *exact* mistake made.
-- [ ] **Advanced Curriculum**: Expand into Geometry, Measurement, and Data Analysis.
-- [ ] **Multi-Child Profiles**: Support multiple profiles on a single device.
+## Phase 4: AI & advanced learning (future)
+
+- [ ] **Richer LLM pedagogy**: Extend beyond short chat replies — e.g. structured hints keyed to common error patterns, with guardrails.
+- [ ] **Advanced curriculum**: Geometry, measurement, data analysis strands.
+- [ ] **Multi-child profiles**: Multiple learners on one device / browser profile.
+
+**Note:** The agent server already supports **Ollama**-backed `tutor_reply` and server-side STT when those services are installed; items above are about *depth* of pedagogy and product UX, not “add an LLM from zero.”

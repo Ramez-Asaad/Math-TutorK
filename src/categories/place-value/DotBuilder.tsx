@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { AnimatedCounter } from '../../components/shared/AnimatedCounter'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Column config ──────────────────────────────────────────── */
 const COLUMNS = [
@@ -67,6 +68,14 @@ export const DotBuilder = () => {
         setCounts(prev => ({ ...prev, [colId]: Math.max(0, prev[colId] - 1) }))
     }, [])
 
+    const clearColumn = useCallback((colId: ColId) => {
+        setCounts(prev => ({ ...prev, [colId]: 0 }))
+    }, [])
+
+    const clearAll = useCallback(() => {
+        setCounts({ thousands: 0, hundreds: 0, tens: 0, ones: 0 })
+    }, [])
+
     const handleCheck = useCallback(() => {
         if (total === target) {
             addCorrect(20)
@@ -105,16 +114,61 @@ export const DotBuilder = () => {
         .map(c => `${counts[c.id] * c.value}`)
     const expandedStr = expandedParts.length > 0 ? expandedParts.join(' + ') : '0'
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'db_place_columns',
+            description: 'Use thousands, hundreds, tens, and ones columns to match the target',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="db-target"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="db-target"]', label: 'Target', color: '#fbbf24' },
+                    ],
+                    speech: 'Read the target, then tap each column to add the right number of dots.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="db-columns"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Each column is a different place value—build them one at a time.',
+                },
+            ],
+        },
+        {
+            id: 'db_check_total',
+            description: 'Compare the expanded form and running total before checking',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="db-summary"]', color: '#34d399' },
+                    ],
+                    speech: 'Watch the sum at the bottom—it should match the target when you are ready.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'dot_builder' as const,
+        operands: [target],
+    }), [target])
+
     return (
         <LessonShell
+            lessonId="dot-builder"
             voiceConfig={VOICE_CONFIGS["dot-builder"]}
             feedback={feedback}
-            problemIndex={idx}
+            problemIndex={problemIdx}
             total={PROBLEMS.length}
             attempted={correctCount + wrongCount}
             correct={correctCount}
             accentClass="bg-violet-700"
             subtitle={`Build the number: ${problem.label}`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -127,6 +181,7 @@ export const DotBuilder = () => {
             <div className="h-full flex flex-col gap-4 p-4">
                 {/* Target number display */}
                 <motion.div
+                    data-hint-region="db-target"
                     animate={
                         feedback === 'correct'
                             ? { backgroundColor: 'rgba(16,185,129,0.2)', borderColor: '#10b981' }
@@ -135,22 +190,35 @@ export const DotBuilder = () => {
                                 : { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.15)' }
                     }
                     transition={{ duration: 0.4 }}
-                    className="flex items-center justify-center gap-6 rounded-2xl border py-3 px-6"
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border py-3 px-6"
                 >
-                    <span className="text-white/60 font-display font-bold">Target:</span>
-                    <span className="text-5xl font-black font-display text-white">{target}</span>
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleCheck}
-                        className="ml-auto px-5 py-2 bg-emerald-500 hover:bg-emerald-400 rounded-xl text-white font-bold font-display"
-                    >
-                        Check ✓
-                    </motion.button>
+                    <div className="flex items-center gap-6 min-w-0">
+                        <span className="text-white/60 font-display font-bold">Target:</span>
+                        <span className="text-5xl font-black font-display text-white">{target}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
+                        <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={clearAll}
+                            className="px-4 py-2 rounded-xl border border-white/25 text-white/85 font-display text-sm font-semibold hover:bg-white/10"
+                        >
+                            Clear all dots
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleCheck}
+                            className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 rounded-xl text-white font-bold font-display"
+                        >
+                            Check ✓
+                        </motion.button>
+                    </div>
                 </motion.div>
 
                 {/* Columns */}
-                <div className="flex-1 grid grid-cols-4 gap-3">
+                <div data-hint-region="db-columns" className="flex-1 grid grid-cols-4 gap-3">
                     {COLUMNS.map((col) => {
                         const count = counts[col.id]
 
@@ -186,10 +254,25 @@ export const DotBuilder = () => {
                                     )}
                                 </div>
 
-                                {/* Count badge */}
-                                <div className="bg-white/5 border-t border-white/10 py-2 text-center">
-                                    <span className="text-white font-black font-display text-xl">{count}</span>
-                                    <span className="text-white/40 font-display text-xs ml-1">dot{count !== 1 ? 's' : ''}</span>
+                                {/* Count badge + clear column */}
+                                <div className="bg-white/5 border-t border-white/10 py-2 px-2 text-center flex flex-col gap-2">
+                                    <div>
+                                        <span className="text-white font-black font-display text-xl">{count}</span>
+                                        <span className="text-white/40 font-display text-xs ml-1">dot{count !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    <motion.button
+                                        type="button"
+                                        whileHover={{ scale: count > 0 ? 1.02 : 1 }}
+                                        whileTap={{ scale: count > 0 ? 0.98 : 1 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            clearColumn(col.id)
+                                        }}
+                                        disabled={count === 0}
+                                        className="w-full py-1.5 rounded-lg text-xs font-display font-semibold text-rose-300/90 bg-rose-950/40 border border-rose-500/30 hover:bg-rose-900/50 disabled:opacity-35 disabled:cursor-not-allowed"
+                                    >
+                                        Empty column
+                                    </motion.button>
                                 </div>
                             </div>
                         )
@@ -197,7 +280,7 @@ export const DotBuilder = () => {
                 </div>
 
                 {/* Expanded form + total */}
-                <div className="flex items-center gap-4 bg-white/5 rounded-2xl px-6 py-3 border border-white/10">
+                <div data-hint-region="db-summary" className="flex items-center gap-4 bg-white/5 rounded-2xl px-6 py-3 border border-white/10">
                     <span className="text-white/60 font-display text-sm">{expandedStr}</span>
                     <span className="text-white/40 font-display text-sm mx-2">=</span>
                     <AnimatedCounter value={total} color="text-amber-300" fontSize="text-2xl" />

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LessonShell } from '../../components/layout/LessonShell'
 import { VOICE_CONFIGS } from '../../utils/lessonVoiceConfigs'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { useNavigate } from 'react-router-dom'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type CellStatus = 'untested' | 'fast' | 'medium' | 'slow' | 'wrong'
@@ -120,8 +121,52 @@ export const TimesTableMap = () => {
         startTime.current = Date.now()
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'ttm_read_question',
+            description: 'Read the highlighted factors and find their product',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ttm-question"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="ttm-question"]', label: `${current.a}×${current.b}`, color: '#fbbf24' },
+                    ],
+                    speech: `Multiply ${current.a} by ${current.b}.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ttm-map"]', color: '#60a5fa' },
+                    ],
+                    speech: 'The grid lights your row and column — the cell where they meet is the fact you are practicing.',
+                },
+            ],
+        },
+        {
+            id: 'ttm_speed_tip',
+            description: 'Use the numpad quickly; colors show how fast you recalled each fact',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="ttm-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Aim for green lightning by answering in under two seconds.',
+                },
+            ],
+        },
+    ], [current.a, current.b])
+
+    const lessonContext = useMemo(() => ({
+        type: 'times_table_map' as const,
+        operands: [current.a, current.b],
+        answer: current.a * current.b,
+    }), [current.a, current.b])
+
     return (
         <LessonShell
+            lessonId="times-table-map"
             voiceConfig={VOICE_CONFIGS["times-table-map"]}
             feedback={feedback}
             problemIndex={0}
@@ -130,6 +175,8 @@ export const TimesTableMap = () => {
             correct={correct}
             accentClass="bg-blue-600"
             subtitle="Times Table Map — beat your fastest times!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -141,7 +188,7 @@ export const TimesTableMap = () => {
 
             <div className="h-full flex gap-4 p-3 overflow-hidden">
                 {/* ── 12×12 Grid ── */}
-                <div className="flex-1 overflow-auto">
+                <div data-hint-region="ttm-map" className="flex-1 overflow-auto">
                     <div className="grid" style={{ gridTemplateColumns: `28px repeat(12, 1fr)`, gap: 3 }}>
                         {/* Header row */}
                         <div />
@@ -198,13 +245,14 @@ export const TimesTableMap = () => {
                 </div>
 
                 {/* ── Question Panel ── */}
-                <div className="w-44 flex flex-col items-center gap-4 justify-center shrink-0">
+                <div data-hint-region="ttm-numpad" className="w-44 flex flex-col items-center gap-4 justify-center shrink-0">
                     <div className="text-white/40 font-display text-xs text-center">
                         {questionsAnswered}/{TOTAL_QUESTIONS} done
                     </div>
 
                     {/* Question box */}
                     <motion.div
+                        data-hint-region="ttm-question"
                         animate={
                             feedback === 'correct'
                                 ? { borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)' }

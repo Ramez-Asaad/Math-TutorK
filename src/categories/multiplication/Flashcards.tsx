@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Types ─────────────────────────────────────────────────── */
 interface Card { a: number; b: number; id: number }
@@ -88,8 +89,45 @@ export const Flashcards = () => {
         setCardState('idle')
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'flash_read_fact',
+            description: 'Read the two factors on the card as “a groups of b”',
+            generate: () => current ? [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="flash-card"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="flash-card"]', label: `${current.a}×${current.b}`, color: '#60a5fa' },
+                    ],
+                    speech: `Multiply ${current.a} by ${current.b}.`,
+                },
+            ] : [],
+        },
+        {
+            id: 'flash_keypad',
+            description: 'Type the product on the numpad',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="flash-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Enter the answer with the number pad.',
+                },
+            ],
+        },
+    ], [current])
+
+    const lessonContext = useMemo(() => ({
+        type: 'mult_flashcards' as const,
+        operands: current ? [current.a, current.b] : [],
+        answer: current ? current.a * current.b : 0,
+    }), [current])
+
     return (
         <LessonShell
+            lessonId="flashcards"
             voiceConfig={VOICE_CONFIGS["flashcards"]}
             problemIndex={0}
             total={TOTAL}
@@ -97,6 +135,8 @@ export const Flashcards = () => {
             correct={correct}
             accentClass="bg-blue-600"
             subtitle={`Card ${index + 1} of ${TOTAL}`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -146,6 +186,7 @@ export const Flashcards = () => {
                     <AnimatePresence mode="wait">
                         {current && (
                             <motion.div
+                                data-hint-region="flash-card"
                                 key={current.id}
                                 variants={CARD_VARIANTS}
                                 animate={cardState === 'flip' ? 'flipped' : cardState === 'wrong' ? 'wrong' : 'stack'}
@@ -188,7 +229,7 @@ export const Flashcards = () => {
                 </div>
 
                 {/* ── Numpad ── */}
-                <div className="flex flex-col justify-center gap-4 w-48">
+                <div data-hint-region="flash-numpad" className="flex flex-col justify-center gap-4 w-48">
                     <div className="text-center">
                         <span className="text-white/50 font-display text-sm">Your answer</span>
                     </div>

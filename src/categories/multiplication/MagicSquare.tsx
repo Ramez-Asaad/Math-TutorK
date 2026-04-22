@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { Confetti } from '../../components/shared/Confetti'
 import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* A magic square where all rows, cols, diagonals sum to the same number */
 interface MagicRound {
@@ -96,24 +97,71 @@ export const MagicSquare = () => {
         reset(); setRoundIdx(0); setFeedback('none'); setFilledBlanks({}); setActiveBlank(null); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'magic_sum_target',
+            description: 'Use the magic sum — each row, column, and diagonal totals the same',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="magic-target"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="magic-target"]', label: `Sum ${round.target}`, color: '#fbbf24' },
+                    ],
+                    speech: `Every straight line of three should add to ${round.target}.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="magic-grid"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Tap a question mark, then type the number that makes its row and column work.',
+                },
+            ],
+        },
+        {
+            id: 'magic_use_line',
+            description: 'Complete a row or column that already has two known numbers',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="magic-grid"]', color: '#34d399' },
+                    ],
+                    speech: 'Pick a line with two numbers filled — subtract their sum from the magic total to find the blank.',
+                },
+            ],
+        },
+    ], [round.target])
+
+    const lessonContext = useMemo(() => ({
+        type: 'magic_square' as const,
+        operands: [round.size, round.target],
+        answer: round.target,
+    }), [round.size, round.target])
+
     return (
         <LessonShell
+            lessonId="magic-square"
             voiceConfig={VOICE_CONFIGS["magic-square"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-blue-600" subtitle={`Every row, column & diagonal = ${round.target}!`}>
+            accentClass="bg-blue-600" subtitle={`Every row, column & diagonal = ${round.target}!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 4 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
             <div className="h-full flex gap-6 p-4">
                 <div className="flex-1 flex flex-col items-center justify-center gap-8">
-                    <div className="text-white/60 font-display text-lg">
+                    <div data-hint-region="magic-target" className="text-white/60 font-display text-lg">
                         Each line adds up to <span className="text-blue-300 font-black text-3xl">{round.target}</span>
                     </div>
 
                     {/* Magic grid */}
                     <motion.div
+                        data-hint-region="magic-grid"
                         animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
                         className="grid gap-2 border-2 border-white/10 rounded-2xl p-4"
                         style={{ gridTemplateColumns: `repeat(${round.size}, 1fr)` }}
@@ -150,7 +198,7 @@ export const MagicSquare = () => {
                     <div className="text-white/30 font-display text-xs">Tap a ? then type its value</div>
                 </div>
 
-                <div className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
+                <div data-hint-region="magic-numpad" className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
                     <div className={`text-white/50 font-display text-sm transition-opacity ${activeBlank !== null ? 'opacity-100' : 'opacity-40'}`}>
                         {activeBlank !== null ? `Fill cell ${activeBlank + 1}` : 'Tap a cell'}
                     </div>

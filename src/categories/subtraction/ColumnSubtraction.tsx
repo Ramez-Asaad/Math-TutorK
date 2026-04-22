@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { a: number; b: number }
 const ROUNDS: Round[] = [
@@ -79,12 +80,58 @@ export const ColumnSubtraction = () => {
         reset(); setRoundIdx(0); setFeedback('none'); setRevealAnswer(false); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'col_sub_align_columns',
+            description: 'Line up hundreds, tens, and ones; subtract bottom from top in each column',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="col-sub-stack"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="col-sub-stack"]', label: 'Align digits', color: '#fbbf24' },
+                    ],
+                    speech: `Subtract ${round.b} from ${round.a}, working from the ones place upward.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="col-sub-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Enter the full difference as one number.',
+                },
+            ],
+        },
+        {
+            id: 'col_sub_read_problem',
+            description: 'Restate the subtraction before typing',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'label', element: '[data-hint-region="col-sub-prompt"]', label: `${round.a} − ${round.b}`, color: '#a78bfa' },
+                    ],
+                    speech: `Read it as ${round.a} minus ${round.b}. If a bottom digit is bigger, think about borrowing from the next column.`,
+                },
+            ],
+        },
+    ], [round.a, round.b])
+
+    const lessonContext = useMemo(() => ({
+        type: 'column_subtraction' as const,
+        operands: [round.a, round.b],
+        answer,
+    }), [round.a, round.b, answer])
+
     return (
         <LessonShell
+            lessonId="column-subtraction"
             voiceConfig={VOICE_CONFIGS["column-subtraction"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-orange-600" subtitle="Subtract the columns!">
+            accentClass="bg-orange-600" subtitle="Subtract the columns!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -92,6 +139,7 @@ export const ColumnSubtraction = () => {
             <div className="h-full flex gap-6 p-4">
                 <div className="flex-1 flex flex-col items-center justify-center gap-6">
                     <motion.div
+                        data-hint-region="col-sub-stack"
                         animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : { borderColor: 'rgba(255,255,255,0.1)' }}
                         className="border-2 rounded-3xl p-8 relative flex gap-0 items-start"
                     >
@@ -119,8 +167,8 @@ export const ColumnSubtraction = () => {
                     </motion.div>
                 </div>
 
-                <div className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
-                    <div className="text-white/50 font-display text-sm">{round.a} − {round.b} = ?</div>
+                <div data-hint-region="col-sub-numpad" className="w-48 flex flex-col items-center justify-center gap-4 shrink-0">
+                    <div data-hint-region="col-sub-prompt" className="text-white/50 font-display text-sm">{round.a} − {round.b} = ?</div>
                     <Numpad onAnswer={handleAnswer} maxDigits={4} />
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Pattern types ──────────────────────────────────────────── */
 interface PatternProblem {
@@ -68,14 +69,59 @@ export const PatternSequencer = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setSelected(null)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'ps_spot_repeat',
+            description: 'Look for a repeating unit or step across the conveyor',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ps-conveyor"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="ps-conveyor"]', label: 'Pattern', color: '#fbbf24' },
+                    ],
+                    speech: 'Read left to right and notice what chunk keeps coming back.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ps-conveyor"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Predict what should sit in the dashed slot using the same rule as earlier terms.',
+                },
+            ],
+        },
+        {
+            id: 'ps_choose_tile',
+            description: 'Pick the option that continues the rule',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="ps-options"]', color: '#34d399' },
+                    ],
+                    speech: 'Compare each choice to the repeating piece before you tap.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'pattern_sequencer' as const,
+        itemCount: problem.sequence.length,
+    }), [problem.sequence.length])
+
     return (
         <LessonShell
+            lessonId="patterns"
             voiceConfig={VOICE_CONFIGS["patterns"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-teal-600"
             subtitle="Find the missing piece in the pattern!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -91,6 +137,7 @@ export const PatternSequencer = () => {
                     <div className="text-white/40 font-display text-sm text-center mb-2">Pattern Conveyor</div>
 
                     <motion.div
+                        data-hint-region="ps-conveyor"
                         animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                         transition={SPRING}
                         className="relative bg-white/5 rounded-3xl border border-white/10 px-6 py-8 overflow-hidden"
@@ -143,7 +190,7 @@ export const PatternSequencer = () => {
                 </div>
 
                 {/* Options tray */}
-                <div className="flex gap-4">
+                <div data-hint-region="ps-options" className="flex gap-4">
                     <span className="text-white/40 font-display text-sm self-center mr-2">Choose:</span>
                     {problem.options.map((opt, i) => (
                         <motion.button

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start the Pocket TTS server for Math Tutor voice instructions.
 # Usage: ./start-tts.sh
-#
+
 # Uses uv (https://docs.astral.sh/uv/) for fast dependency management.
 # First run downloads the model weights (~200MB).
 # The server runs on http://localhost:8000

@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface EqProblem {
@@ -83,14 +84,60 @@ export const MissingNumberEq = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setChosenTile(null)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'mne_read_equation',
+            description: 'Identify the operation and where the blank sits',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="mne-equation"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="mne-equation"]', label: 'Equation', color: '#fbbf24' },
+                    ],
+                    speech: 'Say the equation in words—what is missing, a factor, a sum, or something else?',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="mne-equation"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Use inverse ideas: addition undoes subtraction, division pairs with multiplication.',
+                },
+            ],
+        },
+        {
+            id: 'mne_grab_tile',
+            description: 'Tap a floating tile that makes the statement true',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="mne-tiles"]', color: '#34d399' },
+                    ],
+                    speech: 'Try a tile mentally, then tap the one that makes the full sentence true.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'missing_number_eq' as const,
+        operands: problem.options,
+        answer: problem.answer,
+    }), [problem.options, problem.answer])
+
     return (
         <LessonShell
+            lessonId="missing-number"
             voiceConfig={VOICE_CONFIGS["missing-number"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-teal-600"
             subtitle="Catch the right number!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -103,6 +150,7 @@ export const MissingNumberEq = () => {
             <div className="h-full flex flex-col items-center justify-center gap-8 p-4">
                 {/* Equation display */}
                 <motion.div
+                    data-hint-region="mne-equation"
                     animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                     transition={SPRING}
                     className="flex items-center gap-3"
@@ -138,7 +186,7 @@ export const MissingNumberEq = () => {
                 </motion.div>
 
                 {/* Floating tiles canvas */}
-                <div className="relative w-full max-w-lg h-48">
+                <div data-hint-region="mne-tiles" className="relative w-full max-w-lg h-48">
                     {problem.options.map((num, i) => {
                         const pos = tilePositions[i]
                         const isChosen = chosenTile === num

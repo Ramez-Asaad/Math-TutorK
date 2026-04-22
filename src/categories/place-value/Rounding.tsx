@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface RoundProblem {
@@ -72,14 +73,60 @@ export const Rounding = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setAnswered(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'round_nearest_ten',
+            description: 'See where the number sits between the two tens on the line',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="round-number"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="round-number"]', label: 'Round', color: '#fbbf24' },
+                    ],
+                    speech: 'Find which two tens bracket this number, then decide which end is closer.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="round-track"]', color: '#60a5fa' },
+                    ],
+                    speech: 'The marker shows where you are—compare its distance to each endpoint.',
+                },
+            ],
+        },
+        {
+            id: 'round_pick_endpoint',
+            description: 'Choose the closer ten using the buttons below the line',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="round-picks"]', color: '#34d399' },
+                    ],
+                    speech: 'Tap the ten you are rounding toward when the midpoint rule applies.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'rounding' as const,
+        operands: [problem.number, problem.low, problem.high],
+        answer: problem.answer,
+    }), [problem.number, problem.low, problem.high, problem.answer])
+
     return (
         <LessonShell
+            lessonId="rounding"
             voiceConfig={VOICE_CONFIGS["rounding"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-violet-700"
             subtitle={`Round ${problem.number} to the nearest ten`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -92,6 +139,7 @@ export const Rounding = () => {
             <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
                 {/* Current number */}
                 <motion.div
+                    data-hint-region="round-number"
                     animate={
                         feedback === 'wrong'
                             ? { x: [0, -8, 8, -6, 6, -4, 4, 0] }
@@ -119,7 +167,7 @@ export const Rounding = () => {
                 </motion.div>
 
                 {/* Number line */}
-                <div className="w-full max-w-xl relative px-8">
+                <div data-hint-region="round-track" className="w-full max-w-xl relative px-8">
                     {/* Track */}
                     <div className="h-3 bg-white/10 rounded-full relative overflow-visible">
                         {/* Midpoint glow */}
@@ -165,7 +213,7 @@ export const Rounding = () => {
                     </div>
 
                     {/* End labels */}
-                    <div className="flex justify-between mt-6">
+                    <div data-hint-region="round-picks" className="flex justify-between mt-6">
                         <motion.button
                             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                             onClick={() => handleChoice(problem.low)}

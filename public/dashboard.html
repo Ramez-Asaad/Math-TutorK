@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Tutor — Dashboard</title>
+    <meta name="description" content="Offline math tutor pipeline dashboard with real-time model monitoring and interactive chat.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #101014;
+            --panel: #18181b;
+            --panel-alt: #1e1e22;
+            --border: #27272a;
+            --text: #e4e4e7;
+            --dim: #71717a;
+            --accent: #a78bfa;
+            --green: #4ade80;
+            --red: #f87171;
+            --yellow: #facc15;
+            --blue: #60a5fa;
+            --orange: #fb923c;
+            --radius: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0.75rem;
+        }
+
+        /* Top bar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 0 0.75rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .topbar h1 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+
+        .topbar h1 span { color: var(--accent); }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .conn-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--dim);
+            padding: 0.25rem 0.5rem;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+        }
+
+        .conn-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--red);
+            transition: background 0.3s;
+        }
+        .conn-dot.on { background: var(--green); }
+
+        /* Dashboard grid — 3 columns */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1.1fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 0.6rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 3.5rem);
+        }
+
+        /* Stats row spans all columns */
+        .stats-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.6rem;
+        }
+
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.6rem 0.75rem;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            font-weight: 500;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.2rem;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .stat-value.green { color: var(--green); }
+        .stat-value.red { color: var(--red); }
+        .stat-value.accent { color: var(--accent); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.dim { color: var(--dim); }
+
+        /* Panels */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel-alt);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .panel-body {
+            padding: 0.75rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Problem panel — left column */
+        .problem-panel { grid-column: 1; grid-row: 2; }
+
+        .category-row {
+            display: flex;
+            gap: 0.3rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.6rem;
+        }
+
+        .cat-btn {
+            padding: 0.25rem 0.55rem;
+            font-size: 0.65rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--dim);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .cat-btn:hover { border-color: var(--accent); color: var(--text); }
+        .cat-btn.on { background: var(--accent); color: #000; border-color: var(--accent); }
+
+        .diff-row {
+            display: flex;
+            gap: 0.3rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .diff-btn {
+            padding: 0.2rem 0.45rem;
+            font-size: 0.6rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--dim);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .diff-btn:hover { color: var(--text); }
+        .diff-btn.on { color: var(--yellow); border-color: var(--yellow); }
+
+        .problem-display {
+            text-align: center;
+            padding: 1rem 0;
+        }
+
+        .q-num {
+            font-size: 0.6rem;
+            font-weight: 500;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.4rem;
+        }
+
+        .q-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.4rem;
+            max-width: 220px;
+            margin: 0 auto;
+        }
+
+        #answerInput {
+            flex: 1;
+            padding: 0.55rem 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            outline: none;
+            transition: border 0.15s;
+        }
+
+        #answerInput:focus { border-color: var(--accent); }
+
+        #submitBtn {
+            padding: 0.55rem 0.85rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            background: var(--accent);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        #submitBtn:hover { opacity: 0.85; }
+
+        .result-line {
+            text-align: center;
+            margin-top: 0.6rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-height: 1.2rem;
+        }
+
+        .result-line.ok { color: var(--green); }
+        .result-line.bad { color: var(--red); }
+
+        .hint-line {
+            text-align: center;
+            font-size: 0.65rem;
+            color: var(--dim);
+            font-style: italic;
+            margin-top: 0.25rem;
+            min-height: 0.9rem;
+        }
+
+        /* Chat panel — center column */
+        .chat-panel { grid-column: 2; grid-row: 2; }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .chat-msg {
+            max-width: 90%;
+            padding: 0.5rem 0.7rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chat-msg.tutor {
+            background: rgba(167,139,250,0.12);
+            border: 1px solid rgba(167,139,250,0.2);
+            color: var(--text);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-msg.kid {
+            background: rgba(74,222,128,0.1);
+            border: 1px solid rgba(74,222,128,0.15);
+            color: var(--text);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-msg.system {
+            background: rgba(113,113,122,0.1);
+            border: 1px solid rgba(113,113,122,0.15);
+            color: var(--dim);
+            align-self: center;
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        .chat-msg .chat-sender {
+            font-size: 0.55rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.15rem;
+        }
+
+        .chat-msg.tutor .chat-sender { color: var(--accent); }
+        .chat-msg.kid .chat-sender { color: var(--green); }
+
+        .chat-typing {
+            font-size: 0.7rem;
+            color: var(--dim);
+            font-style: italic;
+            padding: 0 0.75rem 0.5rem;
+            min-height: 1.2rem;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 0.4rem;
+            padding: 0.6rem 0.75rem;
+            border-top: 1px solid var(--border);
+            background: var(--panel-alt);
+            flex-shrink: 0;
+        }
+
+        #chatInput {
+            flex: 1;
+            padding: 0.5rem 0.65rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            outline: none;
+            transition: border 0.15s;
+        }
+
+        #chatInput:focus { border-color: var(--accent); }
+
+        #chatSend {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            background: var(--accent);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        #chatSend:hover { opacity: 0.85; }
+
+        /* Right column: Pipeline + Log stacked */
+        .right-col {
+            grid-column: 3;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .pipeline-panel { flex: 0 0 auto; }
+        .log-panel { flex: 1; min-height: 0; }
+
+        .pipe-list { list-style: none; }
+
+        .pipe-item {
+            display: grid;
+            grid-template-columns: 8px 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .pipe-item:last-child { border-bottom: none; }
+
+        .p-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.25s;
+        }
+
+        .pipe-item.active .p-dot {
+            background: var(--yellow);
+            box-shadow: 0 0 6px rgba(250,204,21,0.4);
+            animation: blink 1s infinite;
+        }
+        .pipe-item.done .p-dot { background: var(--green); }
+        .pipe-item.error .p-dot { background: var(--red); }
+
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .p-name {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .pipe-item.active .p-name { color: var(--yellow); }
+        .pipe-item.done .p-name { color: var(--green); }
+        .pipe-item.error .p-name { color: var(--red); }
+
+        .p-detail {
+            font-size: 0.6rem;
+            color: var(--dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        .p-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--dim);
+            min-width: 38px;
+            text-align: right;
+        }
+
+        .pipe-item.done .p-time { color: var(--green); }
+        .pipe-item.active .p-time { color: var(--yellow); }
+
+        .log-body {
+            padding: 0.4rem 0.6rem;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            line-height: 1.5;
+            color: #71717a;
+            flex: 1;
+        }
+
+        .log-body .l { padding: 1px 0; }
+        .log-body .l.info { color: var(--blue); }
+        .log-body .l.ok { color: var(--green); }
+        .log-body .l.err { color: var(--red); }
+        .log-body .l.warn { color: var(--yellow); }
+
+        .tag {
+            display: inline-block;
+            font-size: 0.5rem;
+            font-weight: 700;
+            padding: 1px 3px;
+            border-radius: 2px;
+            margin-right: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .tag.stt   { background: rgba(129,140,248,0.15); color: #818cf8; }
+        .tag.ctx   { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .tag.llm   { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .tag.tts   { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .tag.audio { background: rgba(250,204,21,0.15); color: #facc15; }
+        .tag.sys   { background: rgba(113,113,122,0.15); color: #a1a1aa; }
+
+        .log-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--dim);
+        }
+
+        /* Log panel full width at bottom */
+        .log-panel-bottom {
+            grid-column: 1 / -1;
+            grid-row: 3;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .stats-row { grid-template-columns: repeat(3, 1fr); }
+            .problem-panel, .chat-panel, .right-col { grid-column: 1; grid-row: auto; }
+            .log-panel-bottom { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1><span>/</span> math-tutor</h1>
+    <div class="topbar-right">
+        <div class="conn-badge">
+            <div class="conn-dot" id="llmDot"></div>
+            <span id="llmBadge">LLM :11434</span>
+        </div>
+        <div class="conn-badge">
+            <div class="conn-dot" id="ttsDot"></div>
+            <span id="ttsBadge">TTS :8000</span>
+        </div>
+        <div class="conn-badge">
+            <div class="conn-dot" id="orchDot"></div>
+            <span id="wsBadge">Agent :8001</span>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Correct</div>
+            <div class="stat-value green" id="sCorrect">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Wrong</div>
+            <div class="stat-value red" id="sWrong">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Streak</div>
+            <div class="stat-value accent" id="sStreak">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Accuracy</div>
+            <div class="stat-value blue" id="sAccuracy">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Last Pipeline</div>
+            <div class="stat-value dim" id="sLatency">--</div>
+        </div>
+    </div>
+
+    <!-- Problem panel — left -->
+    <div class="panel problem-panel">
+        <div class="panel-head">
+            <span class="panel-title">Problem</span>
+            <span class="panel-title" id="qLabel">Q1</span>
+        </div>
+        <div class="panel-body">
+            <div class="category-row" id="catRow">
+                <button class="cat-btn on" data-c="addition">Add</button>
+                <button class="cat-btn" data-c="subtraction">Sub</button>
+                <button class="cat-btn" data-c="multiplication">Mul</button>
+                <button class="cat-btn" data-c="division">Div</button>
+                <button class="cat-btn" data-c="mixed">Mix</button>
+            </div>
+            <div class="diff-row" id="diffRow">
+                <button class="diff-btn on" data-d="easy">Easy</button>
+                <button class="diff-btn" data-d="medium">Med</button>
+                <button class="diff-btn" data-d="hard">Hard</button>
+            </div>
+            <div class="problem-display">
+                <div class="q-num" id="qNum">Question 1</div>
+                <div class="q-text" id="qText">--</div>
+                <div class="input-row">
+                    <input type="text" id="answerInput" placeholder="?" autocomplete="off">
+                    <button id="submitBtn">Check</button>
+                </div>
+                <div class="result-line" id="result"></div>
+                <div class="hint-line" id="hint"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat panel — center -->
+    <div class="panel chat-panel">
+        <div class="panel-head">
+            <span class="panel-title">Tutor Chat</span>
+            <span class="panel-title" id="chatStatus">starting</span>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-typing" id="chatTyping"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+            <button id="chatSend">Send</button>
+        </div>
+    </div>
+
+    <!-- Right column: Pipeline + Log -->
+    <div class="right-col">
+        <div class="panel pipeline-panel">
+            <div class="panel-head">
+                <span class="panel-title">Pipeline</span>
+                <span class="panel-title" id="pipeStatus">idle</span>
+            </div>
+            <div class="panel-body" style="padding:0.5rem 0.75rem;">
+                <ul class="pipe-list">
+                    <li class="pipe-item" id="pSTT">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">STT (agent server)</div>
+                            <div class="p-detail" id="dSTT">Idle</div>
+                        </div>
+                        <div class="p-time" id="tSTT">--</div>
+                    </li>
+                    <li class="pipe-item" id="pCtx">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">Context Builder</div>
+                            <div class="p-detail" id="dCtx">Idle</div>
+                        </div>
+                        <div class="p-time" id="tCtx">--</div>
+                    </li>
+                    <li class="pipe-item" id="pLLM">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">LLM (Ollama)</div>
+                            <div class="p-detail" id="dLLM">Idle</div>
+                        </div>
+                        <div class="p-time" id="tLLM">--</div>
+                    </li>
+                    <li class="pipe-item" id="pTTS">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">TTS (Pocket-TTS)</div>
+                            <div class="p-detail" id="dTTS">Idle</div>
+                        </div>
+                        <div class="p-time" id="tTTS">--</div>
+                    </li>
+                    <li class="pipe-item" id="pAudio">
+                        <div class="p-dot"></div>
+                        <div class="p-info">
+                            <div class="p-name">Audio Playback</div>
+                            <div class="p-detail" id="dAudio">Idle</div>
+                        </div>
+                        <div class="p-time" id="tAudio">--</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="panel log-panel">
+            <div class="panel-head">
+                <span class="panel-title">Log</span>
+                <span class="log-count" id="logCount">0</span>
+            </div>
+            <div class="log-body" id="logBody">
+                <div class="l info"><span class="tag sys">SYS</span> Initialized</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom log full width -->
+</div>
+
+<script>
+(function(){
+    // --- Math-TutorK service endpoints (same machine as uvicorn agent :8001) ---
+    // If your stack runs elsewhere, change SERVICE_HOST only.
+    const SERVICE_HOST = 'localhost';
+    const OLLAMA_PORT = 11434;
+    const TTS_PORT = 8000;
+    const AGENT_PORT = 8001;
+    /** Math-TutorK server/main.py — @app.websocket("/ws/agent") */
+    const AGENT_WS_PATH = '/ws/agent';
+    const OLLAMA_ORIGIN = `http://${SERVICE_HOST}:${OLLAMA_PORT}`;
+    const TTS_ORIGIN = `http://${SERVICE_HOST}:${TTS_PORT}`;
+    const AGENT_HTTP_ORIGIN = `http://${SERVICE_HOST}:${AGENT_PORT}`;
+    const AGENT_WS_URL = `ws://${SERVICE_HOST}:${AGENT_PORT}${AGENT_WS_PATH}`;
+
+    // --- State ---
+    let correct = 0, wrong = 0, streak = 0, qNum = 1;
+    let answer = 0, category = 'addition', difficulty = 'easy';
+    let llmOk = false, ttsOk = false;
+    let logEntries = 1;
+    let pipeStart = 0;
+    const timers = {};
+    let kidName = '';
+    let chatHistory = []; // for LLM context
+    let onboardingPhase = 'checking'; // checking -> askName -> ready
+
+    // --- Telemetry state ---
+    const RECENT_ANSWERS_SIZE = 5;
+    let recentAnswers = [];
+    let problemStartTime = 0;
+    let deletionCount = 0;
+    let lastInputLen = 0;
+    let lastActivityTime = Date.now();
+    let tabFocused = true;
+    let tabBlurCount = 0;
+    let idleSendTimer = null;
+
+    const $ = id => document.getElementById(id);
+
+    $('llmBadge').textContent = `LLM :${OLLAMA_PORT}`;
+    $('ttsBadge').textContent = `TTS :${TTS_PORT}`;
+    $('wsBadge').textContent = `Agent :${AGENT_PORT}`;
+
+    // --- Logging ---
+    const tags = { stt:'STT', ctx:'CTX', llm:'LLM', tts:'TTS', audio:'AUDIO', sys:'SYS' };
+
+    function log(msg, type='info', stage='sys') {
+        const el = document.createElement('div');
+        el.className = `l ${type}`;
+        const t = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:3});
+        el.innerHTML = `${t} <span class="tag ${stage}">${tags[stage]||stage}</span> ${msg}`;
+        $('logBody').appendChild(el);
+        $('logBody').scrollTop = $('logBody').scrollHeight;
+        logEntries++;
+        $('logCount').textContent = logEntries;
+    }
+
+    // --- Chat ---
+    function chatAdd(text, type='tutor') {
+        const el = document.createElement('div');
+        el.className = `chat-msg ${type}`;
+        if (type === 'system') {
+            el.textContent = text;
+        } else {
+            const sender = type === 'tutor' ? 'Tutor' : (kidName || 'You');
+            el.innerHTML = `<div class="chat-sender">${sender}</div>${text}`;
+        }
+        $('chatMessages').appendChild(el);
+        $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
+    }
+
+    function chatTyping(show, text='') {
+        $('chatTyping').textContent = show ? (text || 'Tutor is thinking...') : '';
+    }
+
+    // --- Chat Request to Backend ---
+    function requestTutor(userMsg, systemPrompt) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            chatAdd('Offline. Waiting for Python backend...', 'system');
+            return;
+        }
+
+        pReset();
+        timers['STT'] = pipeStart;
+        pSet('STT', 'done', 'Text input');
+        pSet('Ctx', 'done', 'Enriched context');
+        pSet('LLM', 'active', 'Waiting for tutor...');
+        chatTyping(true);
+
+        // Math-TutorK accepts { type, text } only; fold system guidance into the user text.
+        const text = systemPrompt
+            ? `How you should respond:\n${systemPrompt}\n\nMessage / situation:\n${userMsg}`
+            : userMsg;
+        ws.send(JSON.stringify({ type: 'user_chat', text }));
+    }
+
+    // --- Pipeline ---
+    const stageMap = { STT: 'stt', Ctx: 'ctx', LLM: 'llm', TTS: 'tts', Audio: 'audio' };
+
+    function pSet(s, state, detail) {
+        const el = $(`p${s}`);
+        if (!el) return;
+        el.className = `pipe-item ${state}`;
+        if (detail) $(`d${s}`).textContent = detail;
+        const ls = stageMap[s] || 'sys';
+        if (state === 'active') {
+            timers[s] = performance.now();
+            $(`t${s}`).textContent = '...';
+            log(`Started. ${detail || ''}`, 'warn', ls);
+        } else if (state === 'done' && timers[s]) {
+            const ms = Math.round(performance.now() - timers[s]);
+            $(`t${s}`).textContent = ms + 'ms';
+            log(`Done in ${ms}ms. ${detail || ''}`, 'ok', ls);
+        } else if (state === 'done') {
+            log(`Done. ${detail || ''}`, 'ok', ls);
+        } else if (state === 'error') {
+            $(`t${s}`).textContent = 'ERR';
+            log(`FAILED: ${detail || ''}`, 'err', ls);
+        }
+    }
+
+    function pReset() {
+        ['STT', 'Ctx', 'LLM', 'TTS', 'Audio'].forEach(s => {
+            $(`p${s}`).className = 'pipe-item';
+            $(`d${s}`).textContent = 'Idle';
+            $(`t${s}`).textContent = '--';
+        });
+        pipeStart = performance.now();
+        $('pipeStatus').textContent = 'running';
+        log('--- Pipeline run ---', 'info', 'sys');
+    }
+
+    // --- Problem generation ---
+    function ri(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+    const R = {
+        easy:   { a: [1, 10], s: [1, 10], m: [1, 5], d: [1, 5] },
+        medium: { a: [10, 50], s: [10, 50], m: [2, 10], d: [2, 10] },
+        hard:   { a: [50, 200], s: [20, 100], m: [5, 12], d: [3, 12] }
+    };
+
+    function gen() {
+        let c = category;
+        if (c === 'mixed') c = ['addition', 'subtraction', 'multiplication', 'division'][ri(0, 3)];
+        const r = R[difficulty];
+        let a, b, op, ans;
+        switch (c) {
+            case 'addition': a = ri(r.a[0], r.a[1]); b = ri(r.a[0], r.a[1]); op = '+'; ans = a + b; break;
+            case 'subtraction': a = ri(r.s[0], r.s[1]); b = ri(r.s[0], Math.min(a, r.s[1])); op = '-'; ans = a - b; break;
+            case 'multiplication': a = ri(r.m[0], r.m[1]); b = ri(r.m[0], r.m[1]); op = 'x'; ans = a * b; break;
+            case 'division': b = ri(r.d[0], r.d[1]); ans = ri(1, r.d[1]); a = b * ans; op = '/'; break;
+        }
+        answer = ans;
+        $('qLabel').textContent = `Q${qNum}`;
+        $('qNum').textContent = `Question ${qNum}`;
+        $('qText').textContent = `${a} ${op} ${b} = ?`;
+        $('answerInput').value = '';
+        $('result').textContent = '';
+        $('result').className = 'result-line';
+        $('hint').textContent = '';
+        $('answerInput').focus();
+        problemStartTime = Date.now();
+        deletionCount = 0;
+        lastInputLen = 0;
+        log(`Problem: ${a} ${op} ${b} = ${ans} [${c}, ${difficulty}]`, 'info', 'sys');
+        if (typeof sendState === 'function') sendState();
+    }
+
+    // --- Check answer ---
+    function check() {
+        const v = $('answerInput').value.trim();
+        if (!v) return;
+        const n = parseInt(v, 10);
+        if (isNaN(n)) { $('result').textContent = 'Enter a number'; $('result').className = 'result-line bad'; return; }
+
+        const responseTimeMs = problemStartTime ? Date.now() - problemStartTime : 0;
+        const isCorrect = n === answer;
+
+        recentAnswers.push({
+            question: $('qText').textContent,
+            studentAnswer: n,
+            correctAnswer: answer,
+            correct: isCorrect,
+            responseTimeMs,
+            deletions: deletionCount
+        });
+        if (recentAnswers.length > RECENT_ANSWERS_SIZE) recentAnswers.shift();
+
+        if (isCorrect) {
+            correct++; streak++;
+            $('result').textContent = 'Correct';
+            $('result').className = 'result-line ok';
+            log(`Answer: ${n} -- Correct. Streak: ${streak}`, 'ok', 'sys');
+
+            const name = kidName || 'The child';
+            chatAdd(`${n} (correct)`, 'kid');
+            requestTutor(
+                `${name} just solved ${$('qText').textContent.replace('= ?', `= ${answer}`)} correctly. Streak is ${streak}. Give a brief encouraging response.`,
+                `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Keep responses to 1-2 short sentences. No emojis.`
+            );
+        } else {
+            wrong++; streak = 0;
+            $('result').textContent = `Wrong. Answer: ${answer}`;
+            $('result').className = 'result-line bad';
+            $('hint').textContent = getHint();
+            log(`Answer: ${n} -- Wrong (expected ${answer})`, 'err', 'sys');
+
+            const name = kidName || 'The child';
+            chatAdd(`${n} (wrong)`, 'kid');
+            requestTutor(
+                `${name} answered ${n} but the correct answer to ${$('qText').textContent.replace('= ?', '')} was ${answer}. Gently explain why and encourage them.`,
+                `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Keep responses to 1-2 short sentences. No emojis.`
+            );
+        }
+
+        $('sCorrect').textContent = correct;
+        $('sWrong').textContent = wrong;
+        $('sStreak').textContent = streak;
+        const total = correct + wrong;
+        $('sAccuracy').textContent = total ? Math.round((correct / total) * 100) + '%' : '--';
+        qNum++;
+        if (typeof sendState === 'function') sendState();
+        setTimeout(gen, 1500);
+    }
+
+    function getHint() {
+        const t = $('qText').textContent;
+        if (t.includes('+')) return 'Count forward from the bigger number.';
+        if (t.includes('-')) return 'Count backward from the first number.';
+        if (t.includes('x')) return 'Multiply = add repeatedly.';
+        if (t.includes('/')) return 'How many groups can you make?';
+        return '';
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // --- Connection check ---
+    async function checkConn() {
+        log(`Checking LLM (${OLLAMA_ORIGIN})...`, 'info', 'sys');
+        try {
+            await fetch(`${OLLAMA_ORIGIN}/`, { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
+            llmOk = true;
+            $('llmDot').classList.add('on');
+            log('LLM connected', 'ok', 'sys');
+        } catch {
+            llmOk = false;
+            $('llmDot').classList.remove('on');
+            log('LLM unreachable', 'err', 'sys');
+        }
+
+        log(`Checking TTS (${TTS_ORIGIN})...`, 'info', 'sys');
+        try {
+            await fetch(`${TTS_ORIGIN}/`, { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
+            ttsOk = true;
+            $('ttsDot').classList.add('on');
+            log('TTS connected', 'ok', 'sys');
+        } catch {
+            ttsOk = false;
+            $('ttsDot').classList.remove('on');
+            log('TTS unreachable', 'err', 'sys');
+        }
+
+        log(`Checking agent HTTP (${AGENT_HTTP_ORIGIN}/health)...`, 'info', 'sys');
+        try {
+            const r = await fetch(`${AGENT_HTTP_ORIGIN}/health`, { signal: AbortSignal.timeout(3000) });
+            if (r.ok) log('Math-Tutor agent REST health OK', 'ok', 'sys');
+            else log('Agent /health returned non-OK', 'warn', 'sys');
+        } catch {
+            log('Agent REST unreachable (WebSocket may still work)', 'warn', 'sys');
+        }
+
+        return { llm: llmOk, tts: ttsOk };
+    }
+
+    // --- Onboarding flow ---
+    async function startOnboarding() {
+        $('chatStatus').textContent = 'checking';
+        chatAdd('Running system checks...', 'system');
+
+        // Check LLM and TTS via fetch
+        const status = await checkConn();
+
+        await sleep(300);
+        if (status.llm) {
+            chatAdd('LLM server (Ollama) -- connected', 'system');
+        } else {
+            chatAdd('LLM server (Ollama) -- OFFLINE. Chat will not work.', 'system');
+        }
+
+        await sleep(200);
+        if (status.tts) {
+            chatAdd('TTS server (Pocket-TTS) -- connected', 'system');
+        } else {
+            chatAdd('TTS server (Pocket-TTS) -- OFFLINE. No voice output.', 'system');
+        }
+
+        // Wait up to 5s for WebSocket to the orchestrator
+        await sleep(200);
+        chatAdd('Connecting to Math-TutorK agent...', 'system');
+        let wsReady = false;
+        for (let i = 0; i < 25 && !wsReady; i++) {
+            if (ws && ws.readyState === WebSocket.OPEN) wsReady = true;
+            else await sleep(200);
+        }
+
+        if (wsReady) {
+            chatAdd('Agent WebSocket (:8001/ws/agent) -- connected', 'system');
+        } else {
+            chatAdd('Agent WebSocket -- OFFLINE. Chat and voice will not work.', 'system');
+        }
+
+        await sleep(300);
+
+        if (!status.llm || !wsReady) {
+            chatAdd('Start Math-TutorK services (Ollama, TTS :8000, uvicorn agent on :8001) and reload.', 'system');
+            $('chatStatus').textContent = 'offline';
+            onboardingPhase = 'ready';
+            gen();
+            return;
+        }
+
+        // All services connected — ask for name
+        onboardingPhase = 'askName';
+        $('chatStatus').textContent = 'onboarding';
+        chatAdd('All systems are running. What is your name?', 'tutor');
+        $('chatInput').placeholder = 'Type your name...';
+        $('chatInput').focus();
+    }
+
+    async function handleNameInput(name) {
+        kidName = name;
+        chatAdd(name, 'kid');
+        $('chatInput').placeholder = 'Type a message...';
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'set_child', name }));
+        }
+
+        // Use LLM to greet the kid
+        requestTutor(
+            `The child just told you their name is ${name}. Greet them warmly and explain that you are their math tutor. Tell them you will help them practice math problems and they can ask you anything. Keep it brief and friendly.`,
+            `You are a warm, friendly math tutor named Fast Tutor. The child's name is ${name}. No emojis. Keep it to 2-3 sentences max.`
+        );
+
+        chatAdd('Math practice is ready. Answer problems on the left, or chat here anytime.', 'system');
+        onboardingPhase = 'ready';
+        $('chatStatus').textContent = 'ready';
+        gen();
+    }
+
+    async function handleChatMessage(msg) {
+        chatAdd(msg, 'kid');
+
+        const systemPrompt = `You are a friendly math tutor for a kid named ${kidName || 'buddy'}. Help them with math. Keep responses to 1-3 short sentences. No emojis. If they ask something unrelated to math, gently steer them back.`;
+
+        requestTutor(msg, systemPrompt);
+    }
+
+    // --- Chat input handler ---
+    function onChatSubmit() {
+        const msg = $('chatInput').value.trim();
+        if (!msg) return;
+        $('chatInput').value = '';
+
+        if (onboardingPhase === 'askName') {
+            handleNameInput(msg);
+        } else if (onboardingPhase === 'ready') {
+            handleChatMessage(msg);
+        }
+    }
+
+    // --- Telemetry listeners ---
+    function markActivity() { lastActivityTime = Date.now(); }
+    document.addEventListener('mousemove', markActivity);
+    document.addEventListener('keydown', markActivity);
+    document.addEventListener('click', markActivity);
+
+    $('answerInput').addEventListener('input', () => {
+        const len = $('answerInput').value.length;
+        if (len < lastInputLen) deletionCount++;
+        lastInputLen = len;
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            tabFocused = false;
+            tabBlurCount++;
+        } else {
+            tabFocused = true;
+            markActivity();
+        }
+    });
+
+    const IDLE_SEND_INTERVAL_MS = 10000;
+    idleSendTimer = setInterval(() => {
+        const idleSec = (Date.now() - lastActivityTime) / 1000;
+        if (idleSec >= 5 && typeof sendState === 'function') sendState();
+    }, IDLE_SEND_INTERVAL_MS);
+
+    // --- Events ---
+    $('submitBtn').addEventListener('click', check);
+    $('answerInput').addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+    $('chatSend').addEventListener('click', onChatSubmit);
+    $('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') onChatSubmit(); });
+
+    document.querySelectorAll('.cat-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            document.querySelectorAll('.cat-btn').forEach(x => x.classList.remove('on'));
+            b.classList.add('on');
+            category = b.dataset.c;
+            qNum = 1; gen();
+            log(`Category: ${category}`, 'info', 'sys');
+        });
+    });
+
+    document.querySelectorAll('.diff-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            document.querySelectorAll('.diff-btn').forEach(x => x.classList.remove('on'));
+            b.classList.add('on');
+            difficulty = b.dataset.d;
+            qNum = 1; gen();
+            log(`Difficulty: ${difficulty}`, 'info', 'sys');
+        });
+    });
+
+    // --- WebSocket → Math-TutorK agent (server/main.py) ---
+    let ws;
+    function connectWS() {
+        ws = new WebSocket(AGENT_WS_URL);
+        ws.onopen = () => {
+            $('orchDot').classList.add('on');
+            log(`Agent WebSocket connected (${AGENT_WS_URL}).`, 'ok', 'sys');
+            if (kidName) ws.send(JSON.stringify({ type: 'set_child', name: kidName }));
+            if (typeof sendState === 'function') sendState();
+        };
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'stt_result') {
+                    chatAdd(msg.text, 'kid');
+                    pSet('STT', 'done', msg.text.substring(0, 20) + '...');
+                    pSet('Ctx', 'done', 'Enriched context');
+                    pSet('LLM', 'active', 'Waiting for tutor...');
+                    chatTyping(true);
+                } else if (msg.type === 'tutor_reply') {
+                    chatAdd(msg.text, 'tutor');
+                    pSet('LLM', 'done', 'Replied');
+                    chatTyping(false);
+                    pSet('TTS', 'done', 'Playback (see main app for audio)');
+                } else if (msg.type === 'barge_in') {
+                    chatTyping(false);
+                    log('Barge-in: TTS generation reset on server.', 'warn', 'sys');
+                } else if (msg.type === 'teach' || msg.type === 'annotate' || msg.type === 'swap') {
+                    /* Lesson-only visual commands; React app applies these. */
+                }
+            } catch(e){}
+        };
+        ws.onclose = () => {
+            $('orchDot').classList.remove('on');
+            log('Agent WebSocket closed. Retrying...', 'err', 'sys');
+            setTimeout(connectWS, 2000);
+        };
+        ws.onerror = () => {
+            log('WebSocket error (Math-TutorK agent).', 'err', 'sys');
+        };
+    }
+    
+    function difficultyLevelFrom(d) {
+        if (d === 'easy') return 1;
+        if (d === 'medium') return 3;
+        return 5;
+    }
+
+    /** TelemetrySnapshot shape expected by Math-TutorK server (messages with lessonId). */
+    window.sendState = function() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const total = correct + wrong;
+        const idleSec = Math.round((Date.now() - lastActivityTime) / 1000);
+        const acc01 = total ? correct / total : 0.75;
+        ws.send(JSON.stringify({
+            timestamp: Date.now(),
+            lessonId: 'static-dashboard-drill',
+            problemIndex: Math.max(0, qNum - 1),
+            idleMs: idleSec * 1000,
+            tabFocused,
+            mouseMoveCount: 0,
+            keystrokeCount: 0,
+            answerDeletions: deletionCount,
+            accuracy: acc01,
+            streak,
+            difficultyLevel: difficultyLevelFrom(difficulty),
+            correctCount: correct,
+            wrongCount: wrong,
+            lessonContext: {
+                type: 'dashboard',
+                availableStrategies: [],
+                category,
+                difficulty,
+                problemText: $('qText').textContent,
+                recentAnswers
+            }
+        }));
+    };
+
+    // --- Init ---
+    connectWS();
+    startOnboarding();
+})();
+</script>
+
+</body>
+</html>

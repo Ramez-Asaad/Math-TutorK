@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { Confetti } from '../../components/shared/Confetti'
 import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { whole: number; num: number; den: number }
 type Field = 'whole' | 'num' | 'den'
@@ -83,6 +84,51 @@ export const MixedNumbers = () => {
         reset(); setRoundIdx(0); setFilled({}); setActiveField(null); setFeedback('none'); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'mixed_whole_and_part',
+            description: 'Relate whole circles to the fractional part beside them',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="mixed-pies"]', color: '#f472b6' },
+                        { action: 'label', element: '[data-hint-region="mixed-pies"]', label: 'Wholes + part', color: '#f472b6' },
+                    ],
+                    speech: 'Full circles are whole ones. The slice shows the extra fraction.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="mixed-fields"]', color: '#fbbf24' },
+                    ],
+                    speech: 'Tap the question mark, then type the missing whole, numerator, or denominator.',
+                },
+            ],
+        },
+        {
+            id: 'mixed_numpad_entry',
+            description: 'Use the keypad after selecting a blank',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="mixed-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'Choose the blank first so the keypad knows which part you are filling.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'mixed_numbers' as const,
+        operands: [problem.whole, problem.num, problem.den],
+        answer: problem[missing],
+        currentStep: missing === 'whole' ? 0 : missing === 'num' ? 1 : 2,
+        totalSteps: 3,
+    }), [problem, missing])
+
     const renderField = (field: Field) => {
         const val = getDisplayValue(field)
         const isBlank = field === missing
@@ -122,10 +168,13 @@ export const MixedNumbers = () => {
 
     return (
         <LessonShell
+            lessonId="mixed-numbers"
             voiceConfig={VOICE_CONFIGS["mixed-numbers"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-pink-600" subtitle="Fill in the missing piece of the mixed number!">
+            accentClass="bg-pink-600" subtitle="Fill in the missing piece of the mixed number!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -133,7 +182,7 @@ export const MixedNumbers = () => {
             <div className="h-full flex gap-6 p-4">
                 <div className="flex-1 flex flex-col items-center justify-center gap-8">
                     {/* Visual pies */}
-                    <div className="flex gap-3 items-center flex-wrap justify-center">
+                    <div data-hint-region="mixed-pies" className="flex gap-3 items-center flex-wrap justify-center">
                         {Array.from({ length: totalWhole }, (_, i) => (
                             <motion.div key={i}
                                 initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -159,6 +208,7 @@ export const MixedNumbers = () => {
 
                     {/* Mixed number display */}
                     <motion.div
+                        data-hint-region="mixed-fields"
                         animate={feedback === 'correct' ? { scale: 1.05 } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
                         className="flex items-center gap-3 border-2 border-white/10 rounded-3xl px-10 py-6"
                     >
@@ -176,7 +226,7 @@ export const MixedNumbers = () => {
                     </div>
                 </div>
 
-                <div className={`w-48 flex flex-col items-center justify-center gap-4 shrink-0 transition-opacity ${activeField ? 'opacity-100' : 'opacity-40'}`}>
+                <div data-hint-region="mixed-numpad" className={`w-48 flex flex-col items-center justify-center gap-4 shrink-0 transition-opacity ${activeField ? 'opacity-100' : 'opacity-40'}`}>
                     <div className="text-white/50 font-display text-sm text-center">
                         {activeField ? 'Type the missing number' : 'Tap the ?'}
                     </div>

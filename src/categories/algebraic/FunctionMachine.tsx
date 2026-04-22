@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface MachineProblem {
@@ -84,14 +85,59 @@ export const FunctionMachine = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none')
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'fm_in_out_pairs',
+            description: 'Compare inputs and outputs to infer the repeated operation',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="fm-examples"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="fm-examples"]', label: 'Pairs', color: '#fbbf24' },
+                    ],
+                    speech: 'Look at several in-and-out pairs—the same change should work every time.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="fm-machine"]', color: '#60a5fa' },
+                    ],
+                    speech: 'The hidden rule is what the machine does between the slots.',
+                },
+            ],
+        },
+        {
+            id: 'fm_pick_rule',
+            description: 'Select the rule that fits every example',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="fm-rules"]', color: '#34d399' },
+                    ],
+                    speech: 'Test each candidate mentally against the table before you tap.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'function_machine' as const,
+        itemCount: problem.examples.length,
+    }), [problem.examples.length])
+
     return (
         <LessonShell
+            lessonId="function-machine"
             voiceConfig={VOICE_CONFIGS["function-machine"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-teal-600"
             subtitle="What's the secret rule of the machine?"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -103,7 +149,7 @@ export const FunctionMachine = () => {
 
             <div className="h-full flex flex-col items-center justify-center gap-6 p-4">
                 {/* Examples table */}
-                <div className="flex gap-4">
+                <div data-hint-region="fm-examples" className="flex gap-4">
                     {problem.examples.map((ex, i) => (
                         <motion.div
                             key={i}
@@ -129,6 +175,7 @@ export const FunctionMachine = () => {
 
                 {/* Machine visual */}
                 <motion.div
+                    data-hint-region="fm-machine"
                     animate={
                         feedback === 'wrong'
                             ? { x: [0, -8, 8, -6, 6, -4, 4, 0] }
@@ -178,7 +225,7 @@ export const FunctionMachine = () => {
                 </motion.div>
 
                 {/* Rule options */}
-                <div>
+                <div data-hint-region="fm-rules">
                     <div className="text-white/40 font-display text-sm text-center mb-2">What's the rule?</div>
                     <div className="flex gap-3">
                         {problem.options.map((opt, i) => (

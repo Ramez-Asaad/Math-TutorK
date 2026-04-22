@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 const EMOJIS = ['🍎', '🐸', '🌟', '🦋', '🍭', '🐠', '🎈', '🍕']
 interface Round { total: number; remove: number }
@@ -67,12 +68,60 @@ export const ObjectTakeaway = () => {
         setFeedback('none'); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'takeaway_tap_objects',
+            description: 'Use the emoji grid — each tap removes one object toward the goal',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="takeaway-eq"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="takeaway-eq"]', label: `${round.total} − ${round.remove}`, color: '#fbbf24' },
+                    ],
+                    speech: `You have ${round.total} objects. Take away ${round.remove} by tapping them.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="emoji-pile"]', color: '#fb923c' },
+                    ],
+                    speech: `Tap ${round.remove - removedCount} more — the dots below track progress.`,
+                },
+            ],
+        },
+        {
+            id: 'takeaway_progress_dots',
+            description: 'Show the removal counter chips under the pile',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="remove-tracker"]', color: '#f87171' },
+                        { action: 'label', element: '[data-hint-region="remove-tracker"]', label: 'Removed', color: '#f87171' },
+                    ],
+                    speech: 'Each red dot lights up when you remove one item.',
+                },
+            ],
+        },
+    ], [round.total, round.remove, removedCount])
+
+    const lessonContext = useMemo(() => ({
+        type: 'takeaway_objects' as const,
+        operands: [round.total, round.remove],
+        answer: round.total - round.remove,
+        itemCount: round.total,
+    }), [round.total, round.remove])
+
     return (
         <LessonShell
+            lessonId="takeaway"
             voiceConfig={VOICE_CONFIGS["takeaway"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-orange-600" subtitle={`Remove ${round.remove} — click to take away!`}>
+            accentClass="bg-orange-600" subtitle={`Remove ${round.remove} — click to take away!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -80,6 +129,7 @@ export const ObjectTakeaway = () => {
             <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
                 {/* Problem */}
                 <motion.div
+                    data-hint-region="takeaway-eq"
                     animate={feedback === 'correct' ? { color: '#10b981' } : { color: '#ffffff' }}
                     className="font-black font-display text-5xl"
                 >
@@ -88,6 +138,7 @@ export const ObjectTakeaway = () => {
 
                 {/* Object grid */}
                 <motion.div
+                    data-hint-region="emoji-pile"
                     animate={feedback === 'correct' ? { borderColor: '#10b981', x: 0 } : feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     className="flex flex-wrap gap-3 justify-center max-w-md border-2 border-white/10 rounded-3xl p-6"
@@ -115,7 +166,7 @@ export const ObjectTakeaway = () => {
                 </motion.div>
 
                 {/* Progress */}
-                <div className="flex flex-col items-center gap-2">
+                <div data-hint-region="remove-tracker" className="flex flex-col items-center gap-2">
                     <div className="text-white/60 font-display text-sm">
                         {removedCount < round.remove
                             ? `Click ${round.remove - removedCount} more to remove`

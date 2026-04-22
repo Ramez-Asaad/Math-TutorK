@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
 import { SPRING } from '../../utils/animationPresets'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 /* ─── Problems ───────────────────────────────────────────────── */
 interface PrimeProblem {
@@ -70,14 +71,60 @@ export const Primes = () => {
         reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setSelectedFactor(0)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'pr_rectangles',
+            description: 'Use the dot rectangle to see factor pairs of the number',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="pr-number"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="pr-number"]', label: 'N', color: '#fbbf24' },
+                    ],
+                    speech: 'Prime numbers only make a skinny one-by strip besides the trivial pair.',
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="pr-array"]', color: '#60a5fa' },
+                    ],
+                    speech: 'If you can arrange the dots in more than one non-trivial rectangle, it is composite.',
+                },
+            ],
+        },
+        {
+            id: 'pr_classify',
+            description: 'Choose prime or composite after inspecting arrangements',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="pr-decision"]', color: '#34d399' },
+                    ],
+                    speech: 'Flip factor layouts if there are several, then tap the label that fits.',
+                },
+            ],
+        },
+    ], [])
+
+    const lessonContext = useMemo(() => ({
+        type: 'primes' as const,
+        operands: [problem.number],
+        itemCount: problem.factors.length,
+    }), [problem.number, problem.factors.length])
+
     return (
         <LessonShell
+            lessonId="primes"
             voiceConfig={VOICE_CONFIGS["primes"]}
             feedback={feedback}
-            problemIndex={0}
+            problemIndex={probIdx}
             total={PROBLEMS.length} attempted={correctCount + wrongCount}
             correct={correctCount} accentClass="bg-indigo-700"
             subtitle={`Is ${problem.number} prime or composite?`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -90,6 +137,7 @@ export const Primes = () => {
             <div className="h-full flex flex-col items-center justify-center gap-6 p-4">
                 {/* Number display */}
                 <motion.div
+                    data-hint-region="pr-number"
                     animate={{ y: [0, -4, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                     className="text-7xl font-black font-display text-amber-300"
@@ -99,6 +147,7 @@ export const Primes = () => {
 
                 {/* Dot array */}
                 <motion.div
+                    data-hint-region="pr-array"
                     animate={feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                     transition={SPRING}
                     className="bg-white/5 rounded-3xl border border-white/10 p-6"
@@ -157,7 +206,7 @@ export const Primes = () => {
                 )}
 
                 {/* Decision buttons */}
-                <div className="flex gap-4">
+                <div data-hint-region="pr-decision" className="flex gap-4">
                     <motion.button
                         whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                         onClick={() => handleChoice('prime')}

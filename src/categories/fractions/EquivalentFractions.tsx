@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { fractions: [number, number][]; equivalentIdx: number }
 // Each round: given first fraction, pick the equivalent one from choices
@@ -103,12 +104,62 @@ export const EquivalentFractions = () => {
 
     const COLORS = ['#60a5fa', '#f472b6', '#4ade80', '#fb923c']
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'equiv_compare_pies',
+            description: 'Compare the shaded slices of the given circle to the answer choices',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="equiv-given"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="equiv-given"]', label: `${given[0]}/${given[1]}`, color: '#60a5fa' },
+                    ],
+                    speech: `This is ${given[0]} out of ${given[1]} equal parts shaded.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="equiv-choices"]', color: '#f472b6' },
+                    ],
+                    speech: 'Pick the picture that covers the same amount — an equivalent fraction.',
+                },
+            ],
+        },
+        {
+            id: 'equiv_same_amount',
+            description: 'Think “same size, different slice count” — numerator and denominator scale together',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="equiv-choices"]', color: '#34d399' },
+                    ],
+                    speech: 'If you double both top and bottom, the value stays the same. Find that match.',
+                },
+            ],
+        },
+    ], [given])
+
+    const lessonContext = useMemo(() => {
+        const eq = round.fractions[round.equivalentIdx]
+        return {
+            type: 'equivalent_fractions' as const,
+            operands: [given[0], given[1]],
+            answer: eq ? eq[0] / eq[1] : 0,
+            itemCount: given[1],
+        }
+    }, [round, given])
+
     return (
         <LessonShell
+            lessonId="equivalent-fractions"
             voiceConfig={VOICE_CONFIGS["equivalent"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-pink-600" subtitle={`Which fraction equals ${given[0]}/${given[1]}?`}>
+            accentClass="bg-pink-600" subtitle={`Which fraction equals ${given[0]}/${given[1]}?`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -117,7 +168,7 @@ export const EquivalentFractions = () => {
                 {/* Given fraction */}
                 <div className="flex flex-col items-center gap-2">
                     <div className="text-white/50 font-display text-sm">Find the equivalent of:</div>
-                    <div className="flex items-center gap-4 bg-blue-900/30 border border-blue-400/30 rounded-2xl px-8 py-4">
+                    <div data-hint-region="equiv-given" className="flex items-center gap-4 bg-blue-900/30 border border-blue-400/30 rounded-2xl px-8 py-4">
                         <FractionPie num={given[0]} den={given[1]} color={COLORS[0]} />
                         <div className="text-blue-300 font-black font-display text-4xl">{given[0]}/{given[1]}</div>
                     </div>
@@ -125,7 +176,7 @@ export const EquivalentFractions = () => {
 
                 {/* Choices */}
                 <div className="text-white/50 font-display text-sm">Which of these is the same?</div>
-                <div className="flex gap-6 flex-wrap justify-center">
+                <div data-hint-region="equiv-choices" className="flex gap-6 flex-wrap justify-center">
                     {choices.map(([n, d], i) => {
                         const isChosen = chosen === i
                         return (

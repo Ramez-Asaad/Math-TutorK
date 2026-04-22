@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -9,6 +9,7 @@ import { Confetti } from '../../components/shared/Confetti'
 import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { a: number; b: number }
 type SlotType = 'mul1' | 'mul2' | 'product' | 'div1' | 'div2' | 'quotient'
@@ -112,6 +113,49 @@ export const FactFamily = () => {
         reset(); setRoundIdx(0); setFilled({}); setActiveSlot(null); setFeedback('none'); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'fact_family_relations',
+            description: 'The same three numbers appear in multiply and divide sentences',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ff-house"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="ff-house"]', label: `${round.a}, ${round.b}, ${product}`, color: '#fbbf24' },
+                    ],
+                    speech: `These three numbers travel together: ${round.a}, ${round.b}, and ${product}.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="ff-numpad"]', color: '#60a5fa' },
+                    ],
+                    speech: 'Tap each question mark, then type the number that completes both sides.',
+                },
+            ],
+        },
+        {
+            id: 'fact_inverse_ops',
+            description: 'Division undoes multiplication with the same family numbers',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="ff-house"]', color: '#34d399' },
+                    ],
+                    speech: 'If you know a times fact, the divide fact uses the same numbers in a different order.',
+                },
+            ],
+        },
+    ], [round.a, round.b, product])
+
+    const lessonContext = useMemo(() => ({
+        type: 'fact_family' as const,
+        operands: [round.a, round.b],
+        answer: product,
+    }), [round.a, round.b, product])
+
     const House = () => (
         <div className="flex flex-col items-center gap-3">
             {/* Roof / family label */}
@@ -121,6 +165,7 @@ export const FactFamily = () => {
 
             {/* Two equations */}
             <motion.div
+                data-hint-region="ff-house"
                 animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
                 className="border-2 border-white/15 rounded-3xl p-8 grid grid-cols-2 gap-8 bg-white/3"
             >
@@ -153,10 +198,13 @@ export const FactFamily = () => {
 
     return (
         <LessonShell
+            lessonId="fact-family"
             voiceConfig={VOICE_CONFIGS["fact-family"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-teal-600" subtitle="Fill in the fact family!">
+            accentClass="bg-teal-600" subtitle="Fill in the fact family!"
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -166,7 +214,7 @@ export const FactFamily = () => {
                     <House />
                 </div>
 
-                <div className={`w-48 flex flex-col items-center justify-center gap-4 shrink-0 transition-opacity ${activeSlot ? 'opacity-100' : 'opacity-40'}`}>
+                <div data-hint-region="ff-numpad" className={`w-48 flex flex-col items-center justify-center gap-4 shrink-0 transition-opacity ${activeSlot ? 'opacity-100' : 'opacity-40'}`}>
                     <div className="text-white/50 font-display text-sm text-center">
                         {activeSlot ? `Fill the ?` : 'Tap a ?'}
                     </div>

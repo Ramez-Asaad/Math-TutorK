@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { speakText, stopAudio, preCacheAudio } from '../utils/ttsClient'
 
 const MESSAGES = {
@@ -29,6 +29,17 @@ export function useTutorVoice() {
     const [hintText, setHintText] = useState<string | null>(null)
     const [showHintButton, setShowHintButton] = useState(false)
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    /** Tracks TTS playback (not typewriter) for sequencing teach after tutor_reply */
+    const speakingRef = useRef(false)
+    const idleWaitersRef = useRef<(() => void)[]>([])
+    const [ttsMuted, setTtsMutedState] = useState(false)
+    const ttsMutedRef = useRef(false)
+
+    const flushSpeechIdleWaiters = useCallback(() => {
+        const w = idleWaitersRef.current
+        idleWaitersRef.current = []
+        w.forEach((fn) => fn())
+    }, [])
 
     /* ── Internal: typewriter + audio ── */
     const speakInternal = useCallback(async (text: string) => {
@@ -52,12 +63,17 @@ export function useTutorVoice() {
         type()
 
         // Play audio in parallel (non-blocking — gracefully fails)
-        setIsSpeaking(true)
-        try {
-            await speakText(text)
-        } catch { /* TTS unavailable — text-only fallback */ }
-        setIsSpeaking(false)
-    }, [])
+        if (!ttsMutedRef.current) {
+            setIsSpeaking(true)
+            speakingRef.current = true
+            try {
+                await speakText(text)
+            } catch { /* TTS unavailable — text-only fallback */ }
+            setIsSpeaking(false)
+            speakingRef.current = false
+        }
+        flushSpeechIdleWaiters()
+    }, [flushSpeechIdleWaiters])
 
     /* ── Public API ── */
 
@@ -76,10 +92,18 @@ export function useTutorVoice() {
         speakInternal(text)
     }, [speakInternal])
 
-    /** Speak lesson instructions on mount */
-    const speakInstruction = useCallback((text: string) => {
-        speakInternal(text)
+    /** Speak lesson instructions on mount — returns Promise so callers can await TTS end */
+    const speakInstruction = useCallback((text: string): Promise<void> => {
+        return speakInternal(text)
     }, [speakInternal])
+
+    /** Resolve when no TTS audio is playing (typewriter may still run) */
+    const waitUntilSpeechIdle = useCallback((): Promise<void> => {
+        if (!speakingRef.current) return Promise.resolve()
+        return new Promise<void>((resolve) => {
+            idleWaitersRef.current.push(resolve)
+        })
+    }, [])
 
     /** Show hint offer after wrong answer */
     const offerHint = useCallback((hint: string) => {
@@ -108,16 +132,45 @@ export function useTutorVoice() {
         preCacheAudio(texts)
     }, [])
 
-    return {
+    /** Immediately stop speaking and cancel typewriter — used for barge-in */
+    const cancelSpeaking = useCallback(() => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current)
+            timerRef.current = null
+        }
+        stopAudio()
+        setIsTyping(false)
+        setIsSpeaking(false)
+        speakingRef.current = false
+        flushSpeechIdleWaiters()
+    }, [flushSpeechIdleWaiters])
+
+    /** Mute / unmute tutor voice audio (typewriter still runs). */
+    const setTtsMuted = useCallback((muted: boolean) => {
+        ttsMutedRef.current = muted
+        setTtsMutedState(muted)
+        if (muted) {
+            stopAudio()
+            setIsSpeaking(false)
+            speakingRef.current = false
+            flushSpeechIdleWaiters()
+        }
+    }, [flushSpeechIdleWaiters])
+
+    return useMemo(() => ({
         message,
         isTyping,
         isSpeaking,
+        ttsMuted,
         showHintButton,
         speak,
         speakInstruction,
+        waitUntilSpeechIdle,
         offerHint,
         acceptHint,
         dismissHint,
         preCacheTexts,
-    }
+        cancelSpeaking,
+        setTtsMuted,
+    }), [message, isTyping, isSpeaking, ttsMuted, showHintButton, speak, speakInstruction, waitUntilSpeechIdle, offerHint, acceptHint, dismissHint, preCacheTexts, cancelSpeaking, setTtsMuted])
 }

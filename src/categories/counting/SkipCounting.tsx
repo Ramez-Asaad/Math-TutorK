@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round {
     step: number
@@ -105,8 +106,57 @@ export const SkipCounting = () => {
         setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'skip_step_size',
+            description: 'Each jump adds the step value — use the +badge as the rhythm',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="skip-step-badge"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="skip-step-badge"]', label: `+${round.step}`, color: '#fbbf24' },
+                    ],
+                    speech: `This pattern counts by ${round.step}s. Each arrow adds ${round.step} to the previous number.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="skip-sequence"]', color: '#34d399' },
+                    ],
+                    speech: 'Tap a blank tile, then type the number that continues the pattern.',
+                },
+            ],
+        },
+        {
+            id: 'skip_use_known',
+            description: 'Use a filled neighbor tile to figure out the next blank',
+            generate: () => {
+                const anchor = round.sequence.findIndex((_, i) => !round.blankIndices.includes(i))
+                const safe = anchor >= 0 ? anchor : 0
+                return [
+                    {
+                        delay: 0,
+                        annotations: [
+                            { action: 'circle', element: `[data-skip-tile="${safe}"]`, color: '#a78bfa' },
+                        ],
+                        speech: `Start from a known number and add ${round.step} each time you move right.`,
+                    },
+                ]
+            },
+        },
+    ], [round.step, round.sequence, round.blankIndices])
+
+    const lessonContext = useMemo(() => ({
+        type: 'skip_counting' as const,
+        operands: [round.step],
+        answer: round.sequence[round.blankIndices[0] ?? 0],
+        itemCount: round.sequence.length,
+    }), [round.step, round.sequence, round.blankIndices])
+
     return (
         <LessonShell
+            lessonId="skip-counting"
             voiceConfig={VOICE_CONFIGS["skip-counting"]}
             problemIndex={roundIdx}
             total={ROUNDS.length}
@@ -114,6 +164,8 @@ export const SkipCounting = () => {
             correct={correctCount}
             accentClass="bg-amber-500"
             subtitle={`${round.label} — fill in the blanks!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -129,6 +181,7 @@ export const SkipCounting = () => {
                 <div className="flex-1 flex flex-col items-center justify-center gap-8">
                     {/* Step badge */}
                     <motion.div
+                        data-hint-region="skip-step-badge"
                         animate={{ scale: [1, 1.04, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
                         className={`bg-gradient-to-r ${gradient} rounded-2xl px-6 py-3`}
@@ -137,7 +190,7 @@ export const SkipCounting = () => {
                     </motion.div>
 
                     {/* Sequence tiles */}
-                    <div className="flex flex-wrap gap-3 justify-center items-center max-w-lg">
+                    <div data-hint-region="skip-sequence" className="flex flex-wrap gap-3 justify-center items-center max-w-lg">
                         {round.sequence.map((num, i) => {
                             const isBlank = round.blankIndices.includes(i)
                             const isFilled = filledBlanks[i] !== undefined && filledBlanks[i] !== null
@@ -145,7 +198,7 @@ export const SkipCounting = () => {
                             const isWrong = wrongBlanks.includes(i)
 
                             return (
-                                <motion.div key={i} className="flex items-center gap-2">
+                                <motion.div key={i} data-skip-tile={i} className="flex items-center gap-2">
                                     {isBlank ? (
                                         <motion.button
                                             animate={
@@ -187,6 +240,7 @@ export const SkipCounting = () => {
                                         </motion.button>
                                     ) : (
                                         <motion.div
+                                            data-skip-tile={i}
                                             initial={{ scale: 0.5, opacity: 0 }}
                                             animate={{ scale: 1, opacity: 1, y: [0, -4, 0] }}
                                             transition={{
@@ -220,7 +274,7 @@ export const SkipCounting = () => {
                 </div>
 
                 {/* ── Numpad ── */}
-                <div className="flex flex-col items-center justify-center gap-4 w-48 shrink-0">
+                <div data-hint-region="skip-numpad" className="flex flex-col items-center justify-center gap-4 w-48 shrink-0">
                     <div className={`text-white/50 font-display text-sm text-center transition-opacity ${activeBlank !== null ? 'opacity-100' : 'opacity-30'}`}>
                         {activeBlank !== null ? `Fill blank ${activeBlank + 1}` : 'Tap a blank'}
                     </div>

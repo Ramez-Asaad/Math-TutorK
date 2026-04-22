@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -8,6 +8,7 @@ import { Confetti } from '../../components/shared/Confetti'
 import { Numpad } from '../../components/shared/Numpad'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 const EMOJIS = ['🍪', '🍎', '🌟', '🐠', '🍭', '🎈']
 interface Round { total: number; groups: number }
@@ -87,25 +88,72 @@ export const FairShare = () => {
         setMode('distribute'); setAnswer(''); setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'fair_share_distribute',
+            description: 'Deal items round-robin until the pile is empty',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="fs-equation"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="fs-equation"]', label: `${round.total}÷${round.groups}`, color: '#fbbf24' },
+                    ],
+                    speech: `Split ${round.total} items across ${round.groups} groups fairly.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="fs-groups"]', color: '#2dd4bf' },
+                    ],
+                    speech: 'Press the button to give one item to the next group in rotation.',
+                },
+            ],
+        },
+        {
+            id: 'fair_share_answer',
+            description: 'After sharing, enter how many landed in each group',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="fs-numpad"]', color: '#34d399' },
+                    ],
+                    speech: 'When the remainder hits zero, type the size of one group.',
+                },
+            ],
+        },
+    ], [round.total, round.groups])
+
+    const lessonContext = useMemo(() => ({
+        type: 'fair_share' as const,
+        operands: [round.total, round.groups],
+        answer: perGroup,
+        itemCount: round.total,
+    }), [round.total, round.groups, perGroup])
+
     return (
         <LessonShell
+            lessonId="fair-share"
             voiceConfig={VOICE_CONFIGS["fair-share"]}
             feedback={feedback}
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
-            accentClass="bg-teal-600" subtitle={`Share ${round.total} fairly between ${round.groups} groups!`}>
+            accentClass="bg-teal-600" subtitle={`Share ${round.total} fairly between ${round.groups} groups!`}
+            playbooks={playbooks}
+            lessonContext={lessonContext}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
 
             <div className="h-full flex gap-6 p-4">
                 <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                    <motion.div animate={feedback === 'correct' ? { color: '#10b981' } : {}}
+                    <motion.div data-hint-region="fs-equation" animate={feedback === 'correct' ? { color: '#10b981' } : {}}
                         className="font-black font-display text-4xl text-white">
                         {round.total} ÷ {round.groups} = <span className="text-teal-400">?</span>
                     </motion.div>
 
                     {/* Groups */}
-                    <div className="flex flex-wrap gap-3 justify-center">
+                    <div data-hint-region="fs-groups" className="flex flex-wrap gap-3 justify-center">
                         {Array.from({ length: round.groups }, (_, g) => (
                             <motion.div key={g}
                                 animate={feedback === 'correct' ? { borderColor: '#10b981' } : {}}
@@ -143,7 +191,7 @@ export const FairShare = () => {
                     )}
                 </div>
 
-                <div className={`w-48 flex flex-col items-center justify-center gap-4 shrink-0 transition-opacity ${mode === 'answer' ? 'opacity-100' : 'opacity-30'}`}>
+                <div data-hint-region="fs-numpad" className={`w-48 flex flex-col items-center justify-center gap-4 shrink-0 transition-opacity ${mode === 'answer' ? 'opacity-100' : 'opacity-30'}`}>
                     <div className="text-white/50 font-display text-sm">Each group gets?</div>
                     <Numpad onAnswer={handleAnswer} maxDigits={2} />
                 </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { LessonShell } from '../../components/layout/LessonShell'
@@ -7,6 +7,7 @@ import { LessonComplete } from '../../components/shared/LessonComplete'
 import { Confetti } from '../../components/shared/Confetti'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useProgressStore } from '../../store/useProgressStore'
+import type { TeachingPlaybook } from '../../types/visualCommand'
 
 interface Round { left: number; right: number }
 
@@ -100,6 +101,52 @@ export const Comparison = () => {
         setShowComplete(false)
     }
 
+    const playbooks = useMemo<TeachingPlaybook[]>(() => [
+        {
+            id: 'compare_count_groups',
+            description: 'Compare how many objects are on the left and right',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="compare-left"]', color: '#34d399' },
+                        { action: 'label', element: '[data-hint-region="compare-left"]', label: `${round.left}`, color: '#34d399' },
+                    ],
+                    speech: `Left side has ${round.left}.`,
+                },
+                {
+                    delay: 1200,
+                    annotations: [
+                        { action: 'pulse', element: '[data-hint-region="compare-right"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="compare-right"]', label: `${round.right}`, color: '#60a5fa' },
+                    ],
+                    speech: `Right side has ${round.right}. Which is larger, or are they equal?`,
+                },
+            ],
+        },
+        {
+            id: 'compare_choose_symbol',
+            description: 'Use the middle buttons: less, equal, or greater',
+            generate: () => [
+                {
+                    delay: 0,
+                    annotations: [
+                        { action: 'circle', element: '[data-hint-region="compare-symbols"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="compare-symbols"]', label: '< = >', color: '#fbbf24' },
+                    ],
+                    speech: 'Tap the symbol that matches: less than, equal to, or greater than.',
+                },
+            ],
+        },
+    ], [round.left, round.right])
+
+    const lessonContext = useMemo(() => ({
+        type: 'compare_groups' as const,
+        operands: [round.left, round.right],
+        answer: correct === '<' ? -1 : correct === '>' ? 1 : 0,
+        itemCount: round.left + round.right,
+    }), [round.left, round.right, correct])
+
     const symbolColor = (sym: string) => {
         if (chosen !== sym) return 'bg-white/8 border-white/15 text-white hover:bg-white/15'
         if (feedback === 'correct') return 'bg-emerald-500 border-emerald-400 text-white'
@@ -108,6 +155,7 @@ export const Comparison = () => {
 
     return (
         <LessonShell
+            lessonId="comparison"
             voiceConfig={VOICE_CONFIGS["comparison"]}
             feedback={feedback}
             problemIndex={roundIdx}
@@ -116,6 +164,8 @@ export const Comparison = () => {
             correct={correctCount}
             accentClass="bg-amber-500"
             subtitle="Which side has more? Pick < = >"
+            playbooks={playbooks}
+            lessonContext={lessonContext}
         >
             <LessonComplete
                 show={showComplete}
@@ -140,7 +190,7 @@ export const Comparison = () => {
                     className="flex items-center justify-center gap-6 bg-white/5 rounded-3xl border border-white/10 p-8 w-full max-w-2xl"
                 >
                     {/* Left group */}
-                    <div className="flex flex-col items-center gap-3 min-w-[180px]">
+                    <div data-hint-region="compare-left" className="flex flex-col items-center gap-3 min-w-[180px]">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={`left-${roundIdx}`}
@@ -156,7 +206,7 @@ export const Comparison = () => {
                     </div>
 
                     {/* Symbol zone */}
-                    <div className="flex flex-col gap-3">
+                    <div data-hint-region="compare-symbols" className="flex flex-col gap-3">
                         {(['<', '=', '>'] as const).map((sym) => (
                             <motion.button
                                 key={sym}
@@ -171,7 +221,7 @@ export const Comparison = () => {
                     </div>
 
                     {/* Right group */}
-                    <div className="flex flex-col items-center gap-3 min-w-[180px]">
+                    <div data-hint-region="compare-right" className="flex flex-col items-center gap-3 min-w-[180px]">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={`right-${roundIdx}`}
