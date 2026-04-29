@@ -29,6 +29,7 @@ export function useAgentSocket(callbacks: UseAgentSocketCallbacks) {
 
   // Track whether the hook is still mounted to prevent reconnects after cleanup
   const mountedRef = useRef(true)
+  const [internalMuted, setInternalMuted] = useState(false)
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return
@@ -108,6 +109,48 @@ export function useAgentSocket(callbacks: UseAgentSocketCallbacks) {
     }
   }, [childName])
 
+  // Stream microphone audio to backend via WebSocket for STT inference
+  useEffect(() => {
+    if (!connected || internalMuted || !wsRef.current) return
+    let active = true
+
+    let localStream: MediaStream | null = null
+    let localCtx: AudioContext | null = null
+    let localProc: ScriptProcessorNode | null = null
+
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(stream => {
+      if (!active) {
+        stream.getTracks().forEach(t => t.stop())
+        return
+      }
+      localStream = stream
+      const ctx = new window.AudioContext({ sampleRate: 16000 })
+      localCtx = ctx
+      const source = ctx.createMediaStreamSource(stream)
+      // Use 4096 buffer size, 1 input channel, 1 output channel
+      const processor = ctx.createScriptProcessor(4096, 1, 1)
+      source.connect(processor)
+      processor.connect(ctx.destination)
+
+      processor.onaudioprocess = (e) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          const arr = e.inputBuffer.getChannelData(0)
+          wsRef.current.send(new Float32Array(arr).buffer)
+        }
+        // Silence speakers to prevent microphone feedback loop
+        e.outputBuffer.getChannelData(0).fill(0)
+      }
+      localProc = processor
+    }).catch(err => console.warn('[STT] Failed to acquire microphone', err))
+
+    return () => {
+      active = false
+      if (localProc) localProc.disconnect()
+      if (localCtx) localCtx.close().catch(() => { })
+      if (localStream) localStream.getTracks().forEach(t => t.stop())
+    }
+  }, [connected, internalMuted])
+
   const sendSnapshot = useCallback((snapshot: TelemetrySnapshot) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(snapshot))
@@ -121,6 +164,7 @@ export function useAgentSocket(callbacks: UseAgentSocketCallbacks) {
   }, [])
 
   const sendSttMuted = useCallback((muted: boolean) => {
+    setInternalMuted(muted)
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'set_stt_muted', muted }))
     }

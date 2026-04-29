@@ -606,14 +606,6 @@ def evaluate(snap: Snapshot, state: SessionState) -> dict[str, Any] | None:
     return None
 
 
-# ── Mic callback ──────────────────────────────────────────────
-
-def audio_callback(indata, frames, time_info, status):
-    if status:
-        log.warning(f"Audio status: {status}")
-    audio_queue.put(indata.copy())
-
-
 # ── STT inference ─────────────────────────────────────────────
 
 def run_stt_inference(audio_data) -> str:
@@ -885,19 +877,17 @@ async def process_llm_reply(
 # ── Audio loop (mic → VAD → STT → LLM) ───────────────────────
 
 async def audio_loop():
-    log.info("Starting audio capture + VAD loop...")
-    stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, callback=audio_callback)
+    log.info("Starting audio processing + VAD loop (from WebSocket)...")
     loop = asyncio.get_running_loop()
     buffer: list = []
     silence_frames = 0.0
     is_speaking = False
 
     log.info("=" * 60)
-    log.info("Pipeline Ready! Speak into your default microphone.")
+    log.info("Pipeline Ready! Awaiting frontend audio stream.")
     log.info("=" * 60)
 
-    with stream:
-        while True:
+    while True:
             await asyncio.sleep(0.01)
             while not audio_queue.empty():
                 chunk = audio_queue.get_nowait()
@@ -970,10 +960,18 @@ async def agent_ws(ws: WebSocket):
 
     try:
         while True:
-            raw = await ws.receive_text()
-            try:
-                data = json.loads(raw)
-            except json.JSONDecodeError:
+            msg = await ws.receive()
+            if "text" in msg:
+                raw = msg["text"]
+                try:
+                    data = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+            elif "bytes" in msg:
+                if not stt_muted:
+                    audio_queue.put(np.frombuffer(msg["bytes"], dtype=np.float32))
+                continue
+            else:
                 continue
 
             msg_type = data.get("type")
