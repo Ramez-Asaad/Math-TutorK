@@ -6,7 +6,7 @@ import type {
   ServerMessage,
 } from '../types/visualCommand'
 
-const AGENT_WS_URL = 'ws://localhost:8001/ws/agent'
+const AGENT_WS_URL = import.meta.env.VITE_AGENT_WS_URL || 'ws://localhost:8001/ws/agent'
 const RECONNECT_DELAY = 3_000
 
 interface UseAgentSocketCallbacks {
@@ -33,7 +33,7 @@ export function useAgentSocket(callbacks: UseAgentSocketCallbacks) {
   const connect = useCallback(() => {
     if (!mountedRef.current) return
     if (wsRef.current?.readyState === WebSocket.OPEN ||
-        wsRef.current?.readyState === WebSocket.CONNECTING) return
+      wsRef.current?.readyState === WebSocket.CONNECTING) return
 
     try {
       const ws = new WebSocket(AGENT_WS_URL)

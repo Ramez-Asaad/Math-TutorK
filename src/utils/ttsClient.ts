@@ -8,6 +8,7 @@
 // Vite config maps /tts → http://localhost:8000/tts
 //                   /tts-health → http://localhost:8000/
 const TTS_VOICE = 'azelma'
+const TTS_BASE_URL = import.meta.env.VITE_TTS_URL || '/pocket-tts'
 
 /* ─── Audio cache ────────────────────────────────────────────── */
 const audioCache = new Map<string, ArrayBuffer>()
@@ -21,7 +22,7 @@ export async function isTTSAvailable(): Promise<boolean> {
     const now = Date.now()
     if (serverAvailable !== null && now - lastCheck < CHECK_INTERVAL) return serverAvailable
     try {
-        const res = await fetch('/pocket-tts/', { method: 'GET', signal: AbortSignal.timeout(1500) })
+        const res = await fetch(`${TTS_BASE_URL}/`, { method: 'GET', signal: AbortSignal.timeout(1500) })
         serverAvailable = res.ok
     } catch {
         serverAvailable = false
@@ -42,7 +43,7 @@ export async function generateSpeech(text: string): Promise<ArrayBuffer | null> 
         formData.append('text', text)
         formData.append('voice', TTS_VOICE)
 
-        const res = await fetch('/pocket-tts/tts', {
+        const res = await fetch(`${TTS_BASE_URL}/tts`, {
             method: 'POST',
             body: formData,
             signal: AbortSignal.timeout(8000),
