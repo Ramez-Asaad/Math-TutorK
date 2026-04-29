@@ -28,7 +28,7 @@ import numpy as np
 import sounddevice as sd
 from moonshine_onnx import MoonshineOnnxModel, load_tokenizer
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -100,6 +100,18 @@ CONSECUTIVE_THRESHOLD = 3   # Require N consecutive snapshots confirming a signa
 # ── FastAPI ────────────────────────────────────────────────────
 
 app = FastAPI(title="Math-Tutor Agent")
+
+@app.api_route("/pocket-tts/{path:path}", methods=["GET", "POST", "OPTIONS"])
+async def proxy_tts_request(request: Request, path: str):
+    url = f"http://localhost:8000/{path}"
+    body = await request.body()
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers.pop("content-length", None)
+    async with httpx.AsyncClient() as client:
+        resp = await client.request(request.method, url, content=body, headers=headers, timeout=10.0)
+        safe_headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("transfer-encoding", "content-encoding")}
+        return Response(content=resp.content, status_code=resp.status_code, headers=safe_headers)
 
 app.add_middleware(
     CORSMiddleware,
