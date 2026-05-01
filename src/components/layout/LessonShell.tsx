@@ -7,7 +7,7 @@ import { useTutorVoice } from '../../hooks/useTutorVoice'
 import { useScoreStore } from '../../store/useScoreStore'
 import { useTelemetry } from '../../hooks/useTelemetry'
 import { useAgentSocket } from '../../hooks/useAgentSocket'
-import type { VisualCommand, Annotation, ChatMessage, TeachingPlaybook, LessonContext, AnnotationStep } from '../../types/visualCommand'
+import type { VisualCommand, Annotation, ChatMessage, TeachingPlaybook, LessonContext, AnnotationStep, TelemetrySnapshot } from '../../types/visualCommand'
 
 export interface LessonVoiceConfig {
     /** Spoken instruction when lesson starts */
