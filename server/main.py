@@ -42,11 +42,13 @@ if sys.platform == "win32":
 
 # ── Configuration ──────────────────────────────────────────────
 
-OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_SERVER = "https://api.groq.com/openai/v1/chat/completions"
 ORCHESTRATOR_PORT = int(os.environ.get("ORCHESTRATOR_PORT", "8001"))
-OLLAMA_SERVER = f"http://localhost:{OLLAMA_PORT}/api/chat"
+OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
 
-LLM_MODEL = "qwen3.5:0.8b"
+# Using Groq's high-intelligence, ultra-fast model
+LLM_MODEL = "llama-3.3-70b-versatile"
 LLM_MAX_TOKENS = 250
 LLM_TEMPERATURE = 0.5
 LLM_CONTEXT_LENGTH = 1024
@@ -825,22 +827,24 @@ async def process_llm_reply(
 
     full_reply = ""
     interrupted = False
+    
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"} if GROQ_API_KEY else {}
+    
     try:
+        if not GROQ_API_KEY:
+            raise ValueError("No GROQ_API_KEY provided")
+            
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(connect=30.0, read=60.0, write=10.0, pool=10.0)
         ) as client:
-            async with client.stream("POST", OLLAMA_SERVER, json={
+            async with client.stream("POST", GROQ_SERVER, headers=headers, json={
                 "model": LLM_MODEL,
                 "messages": prompt,
                 "stream": True,
-                "think": False,
-                "options": {
-                    "temperature": LLM_TEMPERATURE,
-                    "num_predict": LLM_MAX_TOKENS,
-                    "num_ctx": LLM_CONTEXT_LENGTH,
-                },
-                "keep_alive": "30m",
+                "temperature": LLM_TEMPERATURE,
+                "max_tokens": LLM_MAX_TOKENS,
             }) as r:
+                r.raise_for_status()
                 async for line in r.aiter_lines():
                     if _current_generation != my_gen:
                         log.info("[LLM] Cancelled — barge-in")
@@ -848,27 +852,68 @@ async def process_llm_reply(
                         break
                     if not line.strip():
                         continue
-                    try:
-                        data = json.loads(line)
-                        token = data.get("message", {}).get("content", "")
-                        done = data.get("done", False)
-                        if token:
-                            full_reply += token
-                            print(token, end="", flush=True)
-                        if done:
+                    if line.startswith("data: "):
+                        content = line[6:]
+                        if content == "[DONE]":
                             break
-                    except json.JSONDecodeError:
-                        pass
+                        try:
+                            data = json.loads(content)
+                            delta = data.get("choices", [{}])[0].get("delta", {})
+                            token = delta.get("content", "")
+                            if token:
+                                full_reply += token
+                                print(token, end="", flush=True)
+                        except json.JSONDecodeError:
+                            pass
         print()
+    except Exception as e:
+        log.warning(f"[LLM] Groq API failed ({e}). Falling back to local Ollama...")
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0)
+            ) as client:
+                async with client.stream("POST", f"http://localhost:{OLLAMA_PORT}/api/chat", json={
+                    "model": "qwen3.5:0.8b",
+                    "messages": prompt,
+                    "stream": True,
+                    "think": False,
+                    "options": {
+                        "temperature": LLM_TEMPERATURE,
+                        "num_predict": LLM_MAX_TOKENS,
+                        "num_ctx": LLM_CONTEXT_LENGTH,
+                    },
+                }) as r:
+                    r.raise_for_status()
+                    async for line in r.aiter_lines():
+                        if _current_generation != my_gen:
+                            log.info("[LLM] Cancelled — barge-in")
+                            interrupted = True
+                            break
+                        if not line.strip():
+                            continue
+                        try:
+                            data = json.loads(line)
+                            token = data.get("message", {}).get("content", "")
+                            done = data.get("done", False)
+                            if token:
+                                full_reply += token
+                                print(token, end="", flush=True)
+                            if done:
+                                break
+                        except json.JSONDecodeError:
+                            pass
+            print()
+        except Exception as fallback_e:
+            log.error(f"[LLM] Fallback to Ollama also failed: {fallback_e}")
 
+    try:
         clean = clean_for_tts(full_reply)
         if clean:
             chat_history.append({"role": "assistant", "content": clean})
             log.info(f"[LLM] Reply ({len(clean)} chars): '{clean[:80]}...'")
             await broadcast({"type": "tutor_reply", "text": clean})
-
     except Exception as e:
-        log.error(f"[LLM] Error: {e}")
+        log.error(f"[LLM] Broadcast Error: {e}")
 
     effective = state if state is not None else _ws_session_state
     await maybe_emit_chat_help_teach(transcript, effective)

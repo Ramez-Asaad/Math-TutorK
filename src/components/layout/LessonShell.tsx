@@ -224,12 +224,17 @@ export const LessonShell: React.FC<LessonShellProps> & {
 
         sendChatRef.current = sendChat
 
+        const handleSnapshot = useCallback((snapshot: TelemetrySnapshot) => {
+            if (voice.isSpeaking) return // Do not trigger backend agent while speaking
+            sendSnapshot(snapshot)
+        }, [sendSnapshot, voice.isSpeaking])
+
         /* ── Telemetry collector ─────────────────────────────── */
         useTelemetry({
             lessonId: resolvedLessonId,
             problemIndex,
             intervalMs: 3_000,
-            onSnapshot: sendSnapshot,
+            onSnapshot: handleSnapshot,
             lessonContext: fullLessonContext,
         })
 
