@@ -102,6 +102,22 @@ export const LessonShell: React.FC<LessonShellProps> & {
         const playbookMap = useMemo(() => {
             const map = new Map<string, TeachingPlaybook>()
             playbooks?.forEach(pb => map.set(pb.id, pb))
+            
+            // Global celebratory playbook available to all lessons
+            map.set('celebrate_success', {
+                id: 'celebrate_success',
+                description: 'Global celebration for completing a step',
+                generate: () => [
+                    {
+                        delay: 0,
+                        annotations: [
+                            { action: 'pulse', element: '[data-lesson-container]', color: '#10b981' },
+                        ],
+                        speech: 'Awesome work! You got it.',
+                    }
+                ]
+            })
+            
             return map
         }, [playbooks])
 
@@ -156,13 +172,32 @@ export const LessonShell: React.FC<LessonShellProps> & {
         const fullLessonContext = useMemo((): LessonContext | undefined => {
             if (!lessonContextProp) return undefined
             return {
+                problemDescription: voiceConfig?.instruction,
                 ...lessonContextProp,
                 availableStrategies: playbooks?.map(p => p.id) ?? [],
             } as LessonContext
-        }, [lessonContextProp, playbooks])
+        }, [lessonContextProp, playbooks, voiceConfig?.instruction])
 
         /* ── Visual command handler ──────────────────────────── */
         const handleVisualCommand = useCallback((cmd: VisualCommand) => {
+            if (cmd.hintAction === 'accept') {
+                if (voice.showHintButton) {
+                    voice.acceptHint()
+                } else if (voiceConfig?.hints) {
+                    const hint = voiceConfig.hints[problemIndex] ?? voiceConfig.hints['*']
+                    if (hint) {
+                        voice.speakInstruction(hint)
+                    }
+                }
+            } else if (cmd.hintAction === 'offer') {
+                if (voiceConfig?.hints) {
+                    const hint = voiceConfig.hints[problemIndex] ?? voiceConfig.hints['*']
+                    if (hint) {
+                        voice.offerHint(hint)
+                    }
+                }
+            }
+
             if (cmd.type === 'teach' && cmd.strategy) {
                 const pb = playbookMap.get(cmd.strategy)
                 if (pb) {
@@ -192,7 +227,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
             if (cmd.speech) {
                 voice.speakInstruction(cmd.speech)
             }
-        }, [onSwapView, voice, playbookMap, playSequence])
+        }, [onSwapView, voice, playbookMap, playSequence, voiceConfig, problemIndex])
 
         const handleSttResult = useCallback((text: string) => {
             addChatMessage('student', text)
@@ -215,7 +250,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
         const sendChatRef = useRef<(text: string) => void>(() => {})
 
         /* ── Agent WebSocket ─────────────────────────────────── */
-        const { sendSnapshot, sendChat, sendSttMuted, connected: agentConnected } = useAgentSocket({
+        const { sendSnapshot, sendChat, sendSttMuted, sendLlmProvider, connected: agentConnected } = useAgentSocket({
             onCommand: handleVisualCommand,
             onSttResult: handleSttResult,
             onTutorReply: handleTutorReply,
@@ -233,19 +268,24 @@ export const LessonShell: React.FC<LessonShellProps> & {
         useTelemetry({
             lessonId: resolvedLessonId,
             problemIndex,
-            intervalMs: 3_000,
             onSnapshot: handleSnapshot,
-            lessonContext: fullLessonContext,
+            lessonContext: lessonContextProp,
+            hintPending: voice.showHintButton,
         })
 
-        // Speak instruction on mount — fast 200ms delay
+        // Speak instruction on mount — play instantly
         useEffect(() => {
             if (voiceConfig?.instruction && !hasSpokenInstruction.current) {
                 hasSpokenInstruction.current = true
-                const t = setTimeout(() => voice.speakInstruction(voiceConfig.instruction), 200)
-                return () => clearTimeout(t)
+                if (resolvedLessonId !== 'unknown') {
+                    // Use pre-recorded audio file to avoid TTS cold-start delay
+                    voice.speakPreRecorded(`/audio/intros/${resolvedLessonId}.wav`, voiceConfig.instruction)
+                } else {
+                    // Fallback to normal TTS
+                    voice.speakInstruction(voiceConfig.instruction)
+                }
             }
-        }, [voiceConfig?.instruction, voice.speakInstruction])
+        }, [voiceConfig?.instruction, voice.speakInstruction, voice.speakPreRecorded, resolvedLessonId])
 
         // Pre-cache feedback audio on mount for instant responses
         useEffect(() => {
@@ -263,6 +303,14 @@ export const LessonShell: React.FC<LessonShellProps> & {
 
             if (feedback === 'correct') {
                 voice.speak('onCorrect')
+                // Trigger the global celebratory playbook
+                const pb = playbookMap.get('celebrate_success')
+                if (pb) {
+                    const steps = pb.generate()
+                    if (steps.length) {
+                        playSequence(steps)
+                    }
+                }
             } else if (feedback === 'wrong') {
                 voice.speak('onWrong')
                 if (voiceConfig?.hints) {
@@ -272,10 +320,10 @@ export const LessonShell: React.FC<LessonShellProps> & {
                     }
                 }
             }
-        }, [feedback, problemIndex, voiceConfig?.hints, voice])
+        }, [feedback, problemIndex, voiceConfig?.hints, voice, playbookMap, playSequence])
 
         return (
-            <div className="relative w-full h-full flex bg-[#0f0f1a] overflow-hidden">
+            <div data-lesson-container="true" className="relative w-full h-full flex bg-[#0f0f1a] overflow-hidden">
                 {/* Accent strip left edge */}
                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${accentClass} opacity-80`} />
 
@@ -287,6 +335,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
                         onSendChat={handleSendChat}
                         agentConnected={agentConnected}
                         sendSttMuted={sendSttMuted}
+                        sendLlmProvider={sendLlmProvider}
                     />
                 </div>
 

@@ -92,14 +92,15 @@ export const ExpandedForm = () => {
                         { action: 'pulse', element: '[data-hint-region="ef-equation"]', color: '#fbbf24' },
                         { action: 'label', element: '[data-hint-region="ef-equation"]', label: 'Expanded', color: '#fbbf24' },
                     ],
-                    speech: 'The expanded form shows each place as a separate term—watch it update as you step.',
+                    speech: `Break ${problem.target} into thousands, hundreds, tens, and ones.`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="ef-steppers"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="ef-steppers"]', label: 'Step ± to match', color: '#60a5fa' },
                     ],
-                    speech: 'Use plus and minus to set how many thousands, hundreds, tens, and ones you need.',
+                    speech: 'Use plus and minus to set each place until the sum equals the target.',
                 },
             ],
         },
@@ -111,12 +112,13 @@ export const ExpandedForm = () => {
                     delay: 0,
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="ef-target"]', color: '#34d399' },
+                        { action: 'label', element: '[data-hint-region="ef-target"]', label: `Target: ${problem.target}`, color: '#34d399' },
                     ],
-                    speech: 'When the sum matches the target row, press check.',
+                    speech: `When your sum matches ${problem.target}, press Check.`,
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'expanded_form' as const,

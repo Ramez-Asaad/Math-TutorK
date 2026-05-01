@@ -82,16 +82,17 @@ export const Rounding = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="round-number"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="round-number"]', label: 'Round', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="round-number"]', label: `${problem.number}`, color: '#fbbf24' },
                     ],
-                    speech: 'Find which two tens bracket this number, then decide which end is closer.',
+                    speech: `${problem.number} sits between ${problem.low} and ${problem.high}. Which end is it closer to?`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="round-track"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="round-track"]', label: `${problem.low}...${problem.high}`, color: '#60a5fa' },
                     ],
-                    speech: 'The marker shows where you are—compare its distance to each endpoint.',
+                    speech: `The pin shows ${problem.number} on the line — compare its distance to ${problem.low} and ${problem.high}.`,
                 },
             ],
         },
@@ -104,11 +105,11 @@ export const Rounding = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="round-picks"]', color: '#34d399' },
                     ],
-                    speech: 'Tap the ten you are rounding toward when the midpoint rule applies.',
+                    speech: `Pick ${problem.low} or ${problem.high} — remember, 5 or more rounds up!`,
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'rounding' as const,

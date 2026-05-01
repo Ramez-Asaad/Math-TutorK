@@ -11,6 +11,7 @@ interface TutorPanelProps {
     onSendChat?: (text: string) => void
     agentConnected?: boolean
     sendSttMuted?: (muted: boolean) => void
+    sendLlmProvider?: (provider: 'groq' | 'ollama') => void
 }
 
 const iconClass = 'w-5 h-5'
@@ -63,10 +64,12 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({
     onSendChat,
     agentConnected = false,
     sendSttMuted,
+    sendLlmProvider,
 }) => {
     const { name, avatar } = useChildStore()
     const [input, setInput] = useState('')
     const [sttMuted, setSttMuted] = useState(false)
+    const [llmProvider, setLlmProvider] = useState<'groq' | 'ollama'>('groq')
     const scrollRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -74,6 +77,12 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({
             sendSttMuted(sttMuted)
         }
     }, [agentConnected, sttMuted, sendSttMuted])
+
+    useEffect(() => {
+        if (agentConnected && sendLlmProvider) {
+            sendLlmProvider(llmProvider)
+        }
+    }, [agentConnected, llmProvider, sendLlmProvider])
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -125,6 +134,20 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({
 
             {/* Voice / chat controls */}
             <div className="flex items-center justify-end gap-1.5 shrink-0">
+                {sendLlmProvider && (
+                    <button
+                        type="button"
+                        onClick={() => setLlmProvider(p => p === 'groq' ? 'ollama' : 'groq')}
+                        title={`Switch LLM: Currently using ${llmProvider}`}
+                        className={`px-2 py-1 rounded border text-xs font-bold uppercase transition-colors ${
+                            llmProvider === 'groq' 
+                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                            : 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                        }`}
+                    >
+                        {llmProvider}
+                    </button>
+                )}
                 {sendSttMuted && (
                     <button
                         type="button"

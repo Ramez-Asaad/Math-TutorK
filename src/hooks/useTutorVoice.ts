@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import { speakText, stopAudio, preCacheAudio } from '../utils/ttsClient'
+import { speakText, stopAudio, preCacheAudio, playPreRecordedSpeech } from '../utils/ttsClient'
 
 const MESSAGES = {
     onCorrect: [
@@ -97,6 +97,42 @@ export function useTutorVoice() {
         return speakInternal(text)
     }, [speakInternal])
 
+    /** Speak a pre-recorded audio file while typing the text */
+    const speakPreRecorded = useCallback(async (url: string, text: string): Promise<void> => {
+        if (timerRef.current) clearTimeout(timerRef.current)
+        stopAudio()
+
+        setMessage('')
+        setIsTyping(true)
+        let i = 0
+        const type = () => {
+            if (i < text.length) {
+                setMessage(text.slice(0, i + 1))
+                i++
+                timerRef.current = setTimeout(type, 25)
+            } else {
+                setIsTyping(false)
+            }
+        }
+        type()
+
+        if (!ttsMutedRef.current) {
+            setIsSpeaking(true)
+            speakingRef.current = true
+            try {
+                await playPreRecordedSpeech(url)
+            } catch {
+                // Fall back to live TTS if the file is missing
+                try {
+                    await speakText(text)
+                } catch { }
+            }
+            setIsSpeaking(false)
+            speakingRef.current = false
+        }
+        flushSpeechIdleWaiters()
+    }, [flushSpeechIdleWaiters])
+
     /** Resolve when no TTS audio is playing (typewriter may still run) */
     const waitUntilSpeechIdle = useCallback((): Promise<void> => {
         if (!speakingRef.current) return Promise.resolve()
@@ -172,5 +208,6 @@ export function useTutorVoice() {
         preCacheTexts,
         cancelSpeaking,
         setTtsMuted,
-    }), [message, isTyping, isSpeaking, ttsMuted, showHintButton, speak, speakInstruction, waitUntilSpeechIdle, offerHint, acceptHint, dismissHint, preCacheTexts, cancelSpeaking, setTtsMuted])
+        speakPreRecorded,
+    }), [message, isTyping, isSpeaking, ttsMuted, showHintButton, speak, speakInstruction, waitUntilSpeechIdle, offerHint, acceptHint, dismissHint, preCacheTexts, cancelSpeaking, setTtsMuted, speakPreRecorded])
 }

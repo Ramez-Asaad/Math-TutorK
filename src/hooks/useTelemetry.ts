@@ -11,6 +11,8 @@ interface UseTelemetryOptions {
   onSnapshot?: (snapshot: TelemetrySnapshot) => void
   /** Rich lesson context forwarded to the agent for smarter decisions */
   lessonContext?: LessonContext
+  /** Whether a hint is currently being offered */
+  hintPending?: boolean
 }
 
 /**
@@ -23,6 +25,7 @@ export function useTelemetry({
   intervalMs = 3_000,
   onSnapshot,
   lessonContext,
+  hintPending,
 }: UseTelemetryOptions) {
   const mouseMoveCount = useRef(0)
   const keystrokeCount = useRef(0)
@@ -99,6 +102,7 @@ export function useTelemetry({
         difficultyLevel: level,
         correctCount,
         wrongCount,
+        hintPending: hintPending,
         ...(lessonContext ? { lessonContext } : {}),
       }
       onSnapshot(snapshot)

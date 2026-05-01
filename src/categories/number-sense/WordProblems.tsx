@@ -116,16 +116,17 @@ export const WordProblems = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="wp-story"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="wp-story"]', label: 'Story', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="wp-story"]', label: 'Read carefully', color: '#fbbf24' },
                     ],
-                    speech: 'Underline what changes and what stays the same, then match it to an operation.',
+                    speech: 'Read the story and find the key numbers and operation.',
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="wp-equation"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="wp-equation"]', label: problem.highlight, color: '#60a5fa' },
                     ],
-                    speech: 'The highlighted line is the model—fill in the number that answers the question.',
+                    speech: `The equation is ${problem.highlight}. Solve for the question mark.`,
                 },
             ],
         },
@@ -138,11 +139,11 @@ export const WordProblems = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="wp-numpad"]', color: '#34d399' },
                     ],
-                    speech: 'Type your answer and submit when the story and equation agree.',
+                    speech: 'Type your answer on the keypad and submit.',
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'word_problems' as const,

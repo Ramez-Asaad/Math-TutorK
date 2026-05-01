@@ -80,16 +80,19 @@ export const Primes = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="pr-number"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="pr-number"]', label: 'N', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="pr-number"]', label: `${problem.number}`, color: '#fbbf24' },
                     ],
-                    speech: 'Prime numbers only make a skinny one-by strip besides the trivial pair.',
+                    speech: `Can ${problem.number} dots make more than one rectangle shape?`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="pr-array"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="pr-array"]', label: `${problem.factors.length} layout${problem.factors.length > 1 ? 's' : ''}`, color: '#60a5fa' },
                     ],
-                    speech: 'If you can arrange the dots in more than one non-trivial rectangle, it is composite.',
+                    speech: problem.factors.length > 1
+                        ? `There are ${problem.factors.length} rectangle layouts — that means it has extra factors.`
+                        : 'Only a single row works — that points toward prime.',
                 },
             ],
         },
@@ -102,11 +105,11 @@ export const Primes = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="pr-decision"]', color: '#34d399' },
                     ],
-                    speech: 'Flip factor layouts if there are several, then tap the label that fits.',
+                    speech: `Is ${problem.number} prime or composite? Tap your answer.`,
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'primes' as const,

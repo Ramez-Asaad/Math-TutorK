@@ -104,23 +104,28 @@ export const BalanceScale = () => {
         {
             id: 'bs_equal_pans',
             description: 'Total the known blocks on each side to infer the unknown weight',
-            generate: () => [
-                {
-                    delay: 0,
-                    annotations: [
-                        { action: 'pulse', element: '[data-hint-region="bs-scale"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="bs-scale"]', label: 'Balance', color: '#fbbf24' },
-                    ],
-                    speech: 'The beam tips when the sides are unequal—picture what must sit in the dashed block.',
-                },
-                {
-                    delay: 1200,
-                    annotations: [
-                        { action: 'pulse', element: '[data-hint-region="bs-scale"]', color: '#60a5fa' },
-                    ],
-                    speech: 'Add the weights you already know on each pan before guessing the missing piece.',
-                },
-            ],
+            generate: () => {
+                const knownSide = problem.unknownSide === 'left' ? 'right' : 'left'
+                const knownBlocks = problem.unknownSide === 'left' ? problem.rightBlocks : problem.leftBlocks
+                const knownTotal = knownBlocks.reduce((s, b) => s + b, 0)
+                return [
+                    {
+                        delay: 0,
+                        annotations: [
+                            { action: 'pulse', element: '[data-hint-region="bs-scale"]', color: '#fbbf24' },
+                            { action: 'label', element: '[data-hint-region="bs-scale"]', label: 'Balance!', color: '#fbbf24' },
+                        ],
+                        speech: `The ${knownSide} side totals ${knownTotal}. What goes in the dashed block to balance?`,
+                    },
+                    {
+                        delay: 1200,
+                        annotations: [
+                            { action: 'pulse', element: '[data-hint-region="bs-scale"]', color: '#60a5fa' },
+                        ],
+                        speech: 'Add the known weights, then figure out the missing piece.',
+                    },
+                ]
+            },
         },
         {
             id: 'bs_enter_mass',
@@ -131,11 +136,11 @@ export const BalanceScale = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="bs-numpad"]', color: '#34d399' },
                     ],
-                    speech: 'Enter the number that makes both sides match.',
+                    speech: `Enter ${problem.answer} to make both sides equal.`,
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'balance_scale' as const,

@@ -21,6 +21,8 @@ export interface VisualCommand {
   actions?: Annotation[]
   /** For teach: the playbook strategy ID to trigger on the lesson */
   strategy?: string
+  /** For hint actions: tell frontend to offer or accept a lesson hint */
+  hintAction?: 'offer' | 'accept'
   /** Optional TTS message the tutor should speak alongside the visual change */
   speech?: string
 }
@@ -94,6 +96,11 @@ export interface SetSttMutedMessage {
   muted: boolean
 }
 
+export interface SetLlmProviderMessage {
+  type: 'set_llm_provider'
+  provider: 'groq' | 'ollama'
+}
+
 /* ── Chat UI types ─────────────────────────────────────────── */
 
 export interface ChatMessage {
@@ -130,6 +137,8 @@ export interface TelemetrySnapshot {
   correctCount: number
   /** Total wrong this session */
   wrongCount: number
+  /** Whether a hint offer is currently visible to the student */
+  hintPending?: boolean
   /** Rich lesson context for smarter agent decisions */
   lessonContext?: Omit<LessonContext, 'availableStrategies'> & { availableStrategies?: string[] }
 }

@@ -78,16 +78,16 @@ export const PatternSequencer = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="ps-conveyor"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="ps-conveyor"]', label: 'Pattern', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="ps-conveyor"]', label: `${problem.sequence.length} items`, color: '#fbbf24' },
                     ],
-                    speech: 'Read left to right and notice what chunk keeps coming back.',
+                    speech: `This sequence has ${problem.sequence.length} slots. Find the repeating chunk.`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="ps-conveyor"]', color: '#60a5fa' },
                     ],
-                    speech: 'Predict what should sit in the dashed slot using the same rule as earlier terms.',
+                    speech: 'What should fill the dashed slot to continue the pattern?',
                 },
             ],
         },
@@ -100,11 +100,11 @@ export const PatternSequencer = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="ps-options"]', color: '#34d399' },
                     ],
-                    speech: 'Compare each choice to the repeating piece before you tap.',
+                    speech: 'Compare each choice to the repeating piece, then tap the match.',
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'pattern_sequencer' as const,

@@ -89,23 +89,27 @@ export const FunctionMachine = () => {
         {
             id: 'fm_in_out_pairs',
             description: 'Compare inputs and outputs to infer the repeated operation',
-            generate: () => [
-                {
-                    delay: 0,
-                    annotations: [
-                        { action: 'pulse', element: '[data-hint-region="fm-examples"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="fm-examples"]', label: 'Pairs', color: '#fbbf24' },
-                    ],
-                    speech: 'Look at several in-and-out pairs—the same change should work every time.',
-                },
-                {
-                    delay: 1200,
-                    annotations: [
-                        { action: 'pulse', element: '[data-hint-region="fm-machine"]', color: '#60a5fa' },
-                    ],
-                    speech: 'The hidden rule is what the machine does between the slots.',
-                },
-            ],
+            generate: () => {
+                const ex = problem.examples[0]
+                return [
+                    {
+                        delay: 0,
+                        annotations: [
+                            { action: 'pulse', element: '[data-hint-region="fm-examples"]', color: '#fbbf24' },
+                            { action: 'label', element: '[data-hint-region="fm-examples"]', label: `${ex.input} → ${ex.output}`, color: '#fbbf24' },
+                        ],
+                        speech: `${ex.input} goes in, ${ex.output} comes out. What operation does that every time?`,
+                    },
+                    {
+                        delay: 1200,
+                        annotations: [
+                            { action: 'pulse', element: '[data-hint-region="fm-machine"]', color: '#60a5fa' },
+                            { action: 'label', element: '[data-hint-region="fm-machine"]', label: '???', color: '#60a5fa' },
+                        ],
+                        speech: 'The machine hides the rule. Check all three pairs to be sure.',
+                    },
+                ]
+            },
         },
         {
             id: 'fm_pick_rule',
@@ -116,11 +120,11 @@ export const FunctionMachine = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="fm-rules"]', color: '#34d399' },
                     ],
-                    speech: 'Test each candidate mentally against the table before you tap.',
+                    speech: 'Test each rule mentally against all three pairs, then tap the match.',
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'function_machine' as const,

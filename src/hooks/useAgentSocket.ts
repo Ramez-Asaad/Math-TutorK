@@ -170,5 +170,11 @@ export function useAgentSocket(callbacks: UseAgentSocketCallbacks) {
     }
   }, [])
 
-  return { sendSnapshot, sendChat, sendSttMuted, connected }
+  const sendLlmProvider = useCallback((provider: 'groq' | 'ollama') => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'set_llm_provider', provider }))
+    }
+  }, [])
+
+  return { sendSnapshot, sendChat, sendSttMuted, sendLlmProvider, connected }
 }

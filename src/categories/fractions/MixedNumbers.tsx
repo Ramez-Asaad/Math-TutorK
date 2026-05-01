@@ -93,16 +93,17 @@ export const MixedNumbers = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="mixed-pies"]', color: '#f472b6' },
-                        { action: 'label', element: '[data-hint-region="mixed-pies"]', label: 'Wholes + part', color: '#f472b6' },
+                        { action: 'label', element: '[data-hint-region="mixed-pies"]', label: `${problem.whole} wholes + fraction`, color: '#f472b6' },
                     ],
-                    speech: 'Full circles are whole ones. The slice shows the extra fraction.',
+                    speech: `There are ${problem.whole} full circle${problem.whole > 1 ? 's' : ''} plus a ${problem.num}/${problem.den} slice.`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="mixed-fields"]', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="mixed-fields"]', label: `Find the ${missing}`, color: '#fbbf24' },
                     ],
-                    speech: 'Tap the question mark, then type the missing whole, numerator, or denominator.',
+                    speech: `The missing part is the ${missing}. Tap the question mark, then type it.`,
                 },
             ],
         },
@@ -115,11 +116,11 @@ export const MixedNumbers = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="mixed-numpad"]', color: '#34d399' },
                     ],
-                    speech: 'Choose the blank first so the keypad knows which part you are filling.',
+                    speech: 'Select the question mark first, then use the keypad to enter your answer.',
                 },
             ],
         },
-    ], [])
+    ], [problem, missing])
 
     const lessonContext = useMemo(() => ({
         type: 'mixed_numbers' as const,

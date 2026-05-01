@@ -98,23 +98,31 @@ export const NegativeNumbers = () => {
         {
             id: 'nn_number_line',
             description: 'Use the line to relate negatives, zero, and positives',
-            generate: () => [
-                {
-                    delay: 0,
-                    annotations: [
-                        { action: 'pulse', element: '[data-hint-region="nn-question"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="nn-question"]', label: 'Prompt', color: '#fbbf24' },
-                    ],
-                    speech: 'Read whether you are locating, comparing, or computing—each mode uses the line differently.',
-                },
-                {
-                    delay: 1200,
-                    annotations: [
-                        { action: 'pulse', element: '[data-hint-region="nn-line"]', color: '#60a5fa' },
-                    ],
-                    speech: 'Numbers to the left are smaller; walk the robot to match the task.',
-                },
-            ],
+            generate: () => {
+                const modeHint = problem.type === 'identify'
+                    ? `Find ${problem.target} on the number line.`
+                    : problem.type === 'compare'
+                        ? 'Compare the two numbers — the one further right is greater.'
+                        : `Solve ${problem.question} using the line.`
+                return [
+                    {
+                        delay: 0,
+                        annotations: [
+                            { action: 'pulse', element: '[data-hint-region="nn-question"]', color: '#fbbf24' },
+                            { action: 'label', element: '[data-hint-region="nn-question"]', label: problem.type, color: '#fbbf24' },
+                        ],
+                        speech: modeHint,
+                    },
+                    {
+                        delay: 1200,
+                        annotations: [
+                            { action: 'pulse', element: '[data-hint-region="nn-line"]', color: '#60a5fa' },
+                            { action: 'label', element: '[data-hint-region="nn-line"]', label: 'Number line', color: '#60a5fa' },
+                        ],
+                        speech: 'Left of zero is negative, right is positive.',
+                    },
+                ]
+            },
         },
         {
             id: 'nn_respond',
@@ -125,11 +133,13 @@ export const NegativeNumbers = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="nn-response"]', color: '#34d399' },
                     ],
-                    speech: 'Tap a tick when you are locating a value, or use the chips when the prompt asks for a computed result.',
+                    speech: problem.type === 'identify'
+                        ? `Tap the tick at ${problem.target}.`
+                        : 'Pick the correct answer from the options.',
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'negative_numbers' as const,

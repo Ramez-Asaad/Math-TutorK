@@ -106,8 +106,13 @@ function ensureUnlockListener() {
 // Start listening immediately on module load
 ensureUnlockListener()
 
+let currentPlayId = 0
+
 export async function playAudio(buffer: ArrayBuffer): Promise<void> {
     stopAudio()
+
+    currentPlayId++
+    const playId = currentPlayId
 
     const ctx = getAudioContext()
     if (ctx.state === 'suspended') {
@@ -120,6 +125,10 @@ export async function playAudio(buffer: ArrayBuffer): Promise<void> {
     }
 
     const audioBuffer = await ctx.decodeAudioData(buffer.slice(0))
+    
+    // If stopAudio was called, or another playAudio was started while we were decoding, abort!
+    if (playId !== currentPlayId) return
+
     const source = ctx.createBufferSource()
     source.buffer = audioBuffer
     source.connect(ctx.destination)
@@ -127,7 +136,9 @@ export async function playAudio(buffer: ArrayBuffer): Promise<void> {
 
     return new Promise<void>((resolve) => {
         source.onended = () => {
-            currentSource = null
+            if (currentSource === source) {
+                currentSource = null
+            }
             resolve()
         }
         source.start()
@@ -135,6 +146,7 @@ export async function playAudio(buffer: ArrayBuffer): Promise<void> {
 }
 
 export function stopAudio() {
+    currentPlayId++ // Invalidate any pending decodeAudioData promises
     if (currentSource) {
         try { currentSource.stop() } catch { /* already stopped */ }
         currentSource = null
@@ -147,4 +159,20 @@ export async function speakText(text: string): Promise<boolean> {
     if (!buffer) return false
     await playAudio(buffer)
     return true
+}
+
+/** 
+ * Fetches and plays a pre-recorded audio file directly from the local server.
+ * Bypasses the TTS generation endpoint entirely.
+ */
+export async function playPreRecordedSpeech(url: string): Promise<void> {
+    try {
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`Audio not found at ${url}`)
+        const buffer = await res.arrayBuffer()
+        await playAudio(buffer)
+    } catch (e) {
+        console.warn(`[TTS] Failed to play pre-recorded audio: ${e}`)
+        throw e
+    }
 }

@@ -93,16 +93,16 @@ export const MissingNumberEq = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="mne-equation"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="mne-equation"]', label: 'Equation', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="mne-equation"]', label: problem.equation, color: '#fbbf24' },
                     ],
-                    speech: 'Say the equation in words—what is missing, a factor, a sum, or something else?',
+                    speech: `The equation is ${problem.equation}. Which number makes it true?`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="mne-equation"]', color: '#60a5fa' },
                     ],
-                    speech: 'Use inverse ideas: addition undoes subtraction, division pairs with multiplication.',
+                    speech: 'Think about inverse operations — addition undoes subtraction, division pairs with multiplication.',
                 },
             ],
         },
@@ -115,11 +115,11 @@ export const MissingNumberEq = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="mne-tiles"]', color: '#34d399' },
                     ],
-                    speech: 'Try a tile mentally, then tap the one that makes the full sentence true.',
+                    speech: 'Try a tile in your head, then grab the one that works.',
                 },
             ],
         },
-    ], [])
+    ], [problem])
 
     const lessonContext = useMemo(() => ({
         type: 'missing_number_eq' as const,

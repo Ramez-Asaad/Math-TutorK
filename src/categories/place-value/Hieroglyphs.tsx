@@ -83,16 +83,17 @@ export const Hieroglyphs = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="hg-parchment"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="hg-parchment"]', label: 'Glyphs', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="hg-parchment"]', label: `${glyphs.length} glyphs`, color: '#fbbf24' },
                     ],
-                    speech: 'Each repeated symbol adds its value—read them like place-value chunks.',
+                    speech: `There are ${glyphs.length} symbols on the scroll. Add each symbol's value to find the total.`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="hg-legend"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="hg-legend"]', label: 'Key', color: '#60a5fa' },
                     ],
-                    speech: 'Cross-check unfamiliar shapes against the symbol key on the side.',
+                    speech: 'Match each shape to its value in the key, then add them all up.',
                 },
             ],
         },
@@ -105,11 +106,11 @@ export const Hieroglyphs = () => {
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="hg-numpad"]', color: '#34d399' },
                     ],
-                    speech: 'Add the parts mentally, then enter the total on the keypad.',
+                    speech: 'Once you know the total, type it on the keypad.',
                 },
             ],
         },
-    ], [])
+    ], [target, glyphs])
 
     const lessonContext = useMemo(() => ({
         type: 'hieroglyphs' as const,

@@ -123,16 +123,17 @@ export const DotBuilder = () => {
                     delay: 0,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="db-target"]', color: '#fbbf24' },
-                        { action: 'label', element: '[data-hint-region="db-target"]', label: 'Target', color: '#fbbf24' },
+                        { action: 'label', element: '[data-hint-region="db-target"]', label: `Build ${target}`, color: '#fbbf24' },
                     ],
-                    speech: 'Read the target, then tap each column to add the right number of dots.',
+                    speech: `Your target is ${target}. Tap each column to add the right number of dots.`,
                 },
                 {
                     delay: 1200,
                     annotations: [
                         { action: 'pulse', element: '[data-hint-region="db-columns"]', color: '#60a5fa' },
+                        { action: 'label', element: '[data-hint-region="db-columns"]', label: 'Place values', color: '#60a5fa' },
                     ],
-                    speech: 'Each column is a different place value—build them one at a time.',
+                    speech: 'Each column is a different place value — build from left to right.',
                 },
             ],
         },
@@ -144,12 +145,13 @@ export const DotBuilder = () => {
                     delay: 0,
                     annotations: [
                         { action: 'circle', element: '[data-hint-region="db-summary"]', color: '#34d399' },
+                        { action: 'label', element: '[data-hint-region="db-summary"]', label: `Sum → ${target}?`, color: '#34d399' },
                     ],
-                    speech: 'Watch the sum at the bottom—it should match the target when you are ready.',
+                    speech: `Check that your total equals ${target} before pressing the button.`,
                 },
             ],
         },
-    ], [])
+    ], [target])
 
     const lessonContext = useMemo(() => ({
         type: 'dot_builder' as const,
