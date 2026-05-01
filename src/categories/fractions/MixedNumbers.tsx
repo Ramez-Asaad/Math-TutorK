@@ -33,11 +33,16 @@ export const MixedNumbers = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [activeField, setActiveField] = useState<Field | null>(null)
     const [filled, setFilled] = useState<Partial<Record<Field, number>>>({})
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const { problem, missing } = ROUNDS[roundIdx]
     const attempted = correctCount + wrongCount
@@ -81,7 +86,7 @@ export const MixedNumbers = () => {
     }, [activeField, missing, feedback, problem, filled, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFilled({}); setActiveField(null); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setFilled({}); setActiveField(null); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -175,7 +180,8 @@ export const MixedNumbers = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-pink-600" subtitle="Fill in the missing piece of the mixed number!"
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -186,15 +192,21 @@ export const MixedNumbers = () => {
                     <div data-hint-region="mixed-pies" className="flex gap-3 items-center flex-wrap justify-center">
                         {Array.from({ length: totalWhole }, (_, i) => (
                             <motion.div key={i}
-                                initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                transition={{ delay: i * 0.1, type: 'spring' }}
+                                animate={{ scale: 1, y: isSimplified ? 0 : [0, -3, 0] }}
+                                transition={{
+                                    scale: { delay: i * 0.1, type: 'spring' },
+                                    y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 }
+                                }}
                                 className="w-16 h-16 rounded-full bg-pink-500 border-2 border-pink-400 flex items-center justify-center text-white font-bold font-display text-xs">
                                 1
                             </motion.div>
                         ))}
                         {/* Partial pie */}
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            transition={{ delay: totalWhole * 0.1, type: 'spring' }}
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1, y: isSimplified ? 0 : [0, -3, 0] }}
+                            transition={{
+                                scale: { delay: totalWhole * 0.1, type: 'spring' },
+                                y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: totalWhole * 0.2 }
+                            }}
                             className="flex flex-col items-center">
                             <svg width="64" height="64">
                                 <circle cx="32" cy="32" r="28" fill="rgba(244,114,182,0.15)" stroke="rgba(244,114,182,0.4)" strokeWidth="2" />

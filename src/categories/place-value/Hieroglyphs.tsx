@@ -39,8 +39,13 @@ export const Hieroglyphs = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const target = PROBLEMS[probIdx]
     const glyphs = useMemo(() => numberToGlyphs(target), [target])
@@ -71,7 +76,7 @@ export const Hieroglyphs = () => {
     }, [target, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none')
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -128,6 +133,7 @@ export const Hieroglyphs = () => {
             subtitle="Decode the Egyptian hieroglyphs!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -176,10 +182,10 @@ export const Hieroglyphs = () => {
                                         <motion.span
                                             key={`${probIdx}-${i}`}
                                             initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: [0, -4, 0] }}
+                                            animate={{ opacity: 1, y: isSimplified ? 0 : [0, -4, 0] }}
                                             transition={{
                                                 opacity: { delay: i * 0.08, duration: 0.3 },
-                                                y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.12 },
+                                                y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.12 },
                                             }}
                                             className="text-5xl select-none"
                                             style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))' }}

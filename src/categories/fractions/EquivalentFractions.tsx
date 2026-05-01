@@ -60,10 +60,15 @@ export const EquivalentFractions = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [chosen, setChosen] = useState<number | null>(null)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const given = round.fractions[0]
@@ -99,7 +104,7 @@ export const EquivalentFractions = () => {
     }, [feedback, round, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const COLORS = ['#60a5fa', '#f472b6', '#4ade80', '#fb923c']
@@ -159,7 +164,8 @@ export const EquivalentFractions = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-pink-600" subtitle={`Which fraction equals ${given[0]}/${given[1]}?`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -182,15 +188,17 @@ export const EquivalentFractions = () => {
                         return (
                             <motion.button
                                 key={i}
-                                whileHover={{ scale: 1.05, y: -4 }}
+                                whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleChoice(i)}
-                                animate={isChosen
+                                animate={isSimplified ? { y: 0 } : { y: [0, -8, 0] }}
+                                transition={isSimplified ? {} : { duration: 4, repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 }}
+                                className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-colors ${isChosen
                                     ? feedback === 'correct'
-                                        ? { borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.2)' }
-                                        : { borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.2)', x: [0, -6, 6, 0] }
-                                    : { borderColor: 'rgba(255,255,255,0.15)' }}
-                                className="flex flex-col items-center gap-3 border-2 rounded-2xl px-6 py-4 bg-white/5 cursor-pointer"
+                                        ? 'bg-emerald-500/20 border-emerald-400'
+                                        : 'bg-rose-500/20 border-rose-400'
+                                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                                    }`}
                             >
                                 <FractionPie num={n} den={d} color={COLORS[i + 1]} />
                                 <span className="font-black font-display text-2xl text-white">{n}/{d}</span>

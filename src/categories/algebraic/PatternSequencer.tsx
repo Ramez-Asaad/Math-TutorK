@@ -34,9 +34,14 @@ export const PatternSequencer = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [selected, setSelected] = useState<string | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
 
@@ -66,7 +71,7 @@ export const PatternSequencer = () => {
     }, [problem.answer, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setSelected(null)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setSelected(null); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -122,6 +127,7 @@ export const PatternSequencer = () => {
             subtitle="Find the missing piece in the pattern!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -144,8 +150,8 @@ export const PatternSequencer = () => {
                     >
                         {/* Belt lines */}
                         <motion.div
-                            animate={{ backgroundPositionX: ['0px', '-40px'] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                            animate={isSimplified ? {} : { backgroundPositionX: ['0px', '-40px'] }}
+                            transition={isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'linear' }}
                             className="absolute inset-x-0 bottom-0 h-3 opacity-20"
                             style={{ backgroundImage: 'repeating-linear-gradient(90deg, #fff 0px, #fff 10px, transparent 10px, transparent 20px)', backgroundSize: '40px 3px' }}
                         />
@@ -166,11 +172,11 @@ export const PatternSequencer = () => {
                                         initial={{ scale: 0 }}
                                         animate={{
                                             scale: 1,
-                                            y: i === problem.blankIdx ? [0, -6, 0] : [0, -4, 0],
+                                            y: i === problem.blankIdx ? (isSimplified ? 0 : [0, -6, 0]) : (isSimplified ? 0 : [0, -4, 0]),
                                         }}
                                         transition={{
                                             scale: { ...SPRING, delay: i * 0.06 },
-                                            y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
+                                            y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
                                         }}
                                         className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-black font-display ${i === problem.blankIdx
                                             ? feedback === 'correct'

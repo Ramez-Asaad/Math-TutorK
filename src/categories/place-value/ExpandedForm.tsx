@@ -32,11 +32,15 @@ export const ExpandedForm = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [values, setValues] = useState([0, 0, 0, 0]) // thousands, hundreds, tens, ones
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
     const total = values[0] * 1000 + values[1] * 100 + values[2] * 10 + values[3]
@@ -74,7 +78,7 @@ export const ExpandedForm = () => {
     }, [total, problem.target, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setValues([0, 0, 0, 0]); setShowComplete(false); setFeedback('none')
+        reset(); setProbIdx(0); setValues([0, 0, 0, 0]); setShowComplete(false); setFeedback('none'); setIsSimplified(false)
     }
 
     // Expanded form string
@@ -137,6 +141,7 @@ export const ExpandedForm = () => {
             subtitle={`Build: ${problem.hint}`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -166,9 +171,22 @@ export const ExpandedForm = () => {
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={SPRING}
-                        className="text-3xl font-black font-display text-amber-300"
+                        className="text-3xl font-black font-display flex flex-wrap justify-center items-center gap-2"
                     >
-                        {expandedStr}
+                        {isSimplified ? (
+                            PLACES.map((p, i) => {
+                                const val = values[i] * p.mult;
+                                if (val === 0) return null;
+                                return (
+                                    <span key={i} className={p.color.replace('from-', 'text-').split(' ')[0] + ' brightness-150'}>
+                                        {val}
+                                        {i < PLACES.length - 1 && parts.some((v, idx) => idx > i && v > 0) && <span className="text-white/30 ml-2">+</span>}
+                                    </span>
+                                )
+                            })
+                        ) : (
+                            <span className="text-amber-300">{expandedStr}</span>
+                        )}
                     </motion.div>
                     <div className="flex items-center justify-center gap-3 mt-2">
                         <span className="text-white/40 font-display">=</span>
@@ -184,10 +202,10 @@ export const ExpandedForm = () => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ ...SPRING, delay: i * 0.08 }}
-                            className={`flex flex-col items-center justify-between rounded-2xl border ${place.border} bg-white/5 p-3`}
+                            className={`flex flex-col items-center justify-between rounded-2xl border ${place.border} p-3 transition-colors ${isSimplified ? place.color.replace('from-', 'bg-').split(' ')[0] + '/20' : 'bg-white/5'}`}
                         >
                             {/* Label */}
-                            <div className={`w-full text-center py-1 rounded-xl bg-gradient-to-r ${place.color}`}>
+                            <div className={`w-full text-center py-1 rounded-xl bg-gradient-to-r ${place.color} shadow-lg`}>
                                 <span className="text-white font-bold font-display text-sm">{place.label}</span>
                             </div>
 

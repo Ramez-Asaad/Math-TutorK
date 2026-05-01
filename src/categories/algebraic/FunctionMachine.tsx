@@ -52,8 +52,13 @@ export const FunctionMachine = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
 
@@ -82,7 +87,7 @@ export const FunctionMachine = () => {
     }, [feedback, problem.answerLabel, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none')
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -142,6 +147,7 @@ export const FunctionMachine = () => {
             subtitle="What's the secret rule of the machine?"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -192,18 +198,18 @@ export const FunctionMachine = () => {
                     <div className="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-800 rounded-3xl border-2 border-gray-600 shadow-2xl overflow-hidden">
                         {/* Gears */}
                         <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                            animate={{ rotate: isSimplified ? 0 : 360 }}
+                            transition={isSimplified ? {} : { duration: 4, repeat: Infinity, ease: 'linear' }}
                             className="absolute top-3 left-6 text-4xl opacity-30"
                         >⚙️</motion.div>
                         <motion.div
-                            animate={{ rotate: -360 }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                            animate={{ rotate: isSimplified ? 0 : -360 }}
+                            transition={isSimplified ? {} : { duration: 3, repeat: Infinity, ease: 'linear' }}
                             className="absolute top-6 right-8 text-3xl opacity-20"
                         >⚙️</motion.div>
                         <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                            animate={{ rotate: isSimplified ? 0 : 360 }}
+                            transition={isSimplified ? {} : { duration: 5, repeat: Infinity, ease: 'linear' }}
                             className="absolute bottom-3 left-1/2 text-2xl opacity-25"
                         >⚙️</motion.div>
 

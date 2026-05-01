@@ -18,10 +18,15 @@ export const SquareNumbers = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [revealed, setRevealed] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const n = SQUARES[roundIdx]
     const answer = n * n
@@ -57,7 +62,7 @@ export const SquareNumbers = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setRevealed(false); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setRevealed(false); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -112,7 +117,8 @@ export const SquareNumbers = () => {
             problemIndex={roundIdx} total={SQUARES.length} attempted={attempted} correct={correctCount}
             accentClass="bg-blue-600" subtitle={`What is ${n}²?`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 4 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -132,8 +138,11 @@ export const SquareNumbers = () => {
                                     <motion.div
                                         key={c}
                                         initial={{ scale: 0 }}
-                                        animate={{ scale: 1, backgroundColor: feedback === 'correct' ? '#10b981' : '#3b82f6' }}
-                                        transition={{ delay: (r * n + c) * 0.01, type: 'spring', stiffness: 400 }}
+                                        animate={{ 
+                                            scale: 1, 
+                                            backgroundColor: feedback === 'correct' ? '#10b981' : '#3b82f6' 
+                                        }}
+                                        transition={isSimplified ? { duration: 0 } : { delay: (r * n + c) * 0.01, type: 'spring', stiffness: 400 }}
                                         className="w-7 h-7 rounded-sm"
                                     />
                                 ))}

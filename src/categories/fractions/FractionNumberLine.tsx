@@ -29,10 +29,15 @@ export const FractionNumberLine = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [chosen, setChosen] = useState<[number, number] | null>(null)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const target = round.num / round.den
@@ -68,7 +73,7 @@ export const FractionNumberLine = () => {
     }, [feedback, target, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setChosen(null); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -126,7 +131,8 @@ export const FractionNumberLine = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-pink-600" subtitle={`Where is ${round.num}/${round.den} on the number line?`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -138,6 +144,14 @@ export const FractionNumberLine = () => {
                     <div className="text-white/60 font-display text-sm">Place this fraction</div>
                     <div className="text-pink-300 font-black font-display text-5xl">{round.num}/{round.den}</div>
                 </motion.div>
+
+                {isSimplified && (
+                    <div className="w-full max-w-2xl h-8 flex gap-1 px-4 mb-2">
+                        {Array.from({ length: round.den }, (_, i) => (
+                            <div key={i} className={`flex-1 rounded-md border border-white/20 transition-colors ${i < round.num ? 'bg-pink-500/40 border-pink-400' : 'bg-white/5'}`} />
+                        ))}
+                    </div>
+                )}
 
                 {/* Number line */}
                 <div className="w-full max-w-2xl relative px-4">

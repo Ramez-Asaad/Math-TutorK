@@ -10,6 +10,8 @@ import { useAgentSocket } from '../../hooks/useAgentSocket'
 import type { VisualCommand, Annotation, ChatMessage, TeachingPlaybook, LessonContext, AnnotationStep, TelemetrySnapshot } from '../../types/visualCommand'
 
 export interface LessonVoiceConfig {
+    /** Optional identifier used to fetch pre-recorded audio file matching the config key */
+    id?: string
     /** Spoken instruction when lesson starts */
     instruction: string
     /** Hints keyed by problem index (or a default '*' key) */
@@ -50,6 +52,19 @@ const PRECACHE_MESSAGES = [
     "Need a hint?",
 ]
 
+const SUCCESS_PHRASES = [
+    "Awesome work! You got it.",
+    "Way to go! You're a math superstar.",
+    "Correct! Keep it up!",
+    "Amazing! You're doing great.",
+    "Spot on! You nailed it.",
+    "Fantastic! That's the right answer.",
+    "You're on fire! Well done.",
+    "Great job! You've got this.",
+    "Excellent! You're learning so fast.",
+    "Brilliant! Keep going!"
+]
+
 export const LessonShell: React.FC<LessonShellProps> & {
     useVoice: typeof useTutorVoice
 } = ({
@@ -68,7 +83,8 @@ export const LessonShell: React.FC<LessonShellProps> & {
     lessonContext: lessonContextProp,
 }) => {
         const voice = useTutorVoice()
-        const { sessionPoints, streak } = useScoreStore()
+        const { sessionPoints, streak, reset: resetScore } = useScoreStore()
+        const [isSimplified, setIsSimplified] = useState(false)
         const hasSpokenInstruction = useRef(false)
         const lastFeedback = useRef<string>('none')
 
@@ -95,8 +111,24 @@ export const LessonShell: React.FC<LessonShellProps> & {
         /* ── Adaptive agent: annotations + swap overlay state ── */
         const [annotations, setAnnotations] = useState<Annotation[]>([])
         const [swapOverlay, setSwapOverlay] = useState<{ target: string; speech?: string } | null>(null)
+
+        // Reset score and local state on lesson mount
+        useEffect(() => {
+            resetScore()
+            setIsSimplified(false)
+        }, [resetScore, resolvedLessonId])
+
         const clearAnnotations = useCallback(() => setAnnotations([]), [])
-        const dismissSwapOverlay = useCallback(() => setSwapOverlay(null), [])
+        const dismissSwapOverlay = useCallback(() => {
+            if (swapOverlay?.target) {
+                if (swapOverlay.target === 'simplified_view') {
+                    setIsSimplified(true)
+                }
+                // Notify the child lesson to swap its view
+                onSwapView?.(swapOverlay.target)
+            }
+            setSwapOverlay(null)
+        }, [swapOverlay, onSwapView])
 
         /* ── Playbook registry + sequence player ─────────────── */
         const playbookMap = useMemo(() => {
@@ -113,7 +145,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
                         annotations: [
                             { action: 'pulse', element: '[data-lesson-container]', color: '#10b981' },
                         ],
-                        speech: 'Awesome work! You got it.',
+                        speech: SUCCESS_PHRASES[Math.floor(Math.random() * SUCCESS_PHRASES.length)],
                     }
                 ]
             })
@@ -174,7 +206,12 @@ export const LessonShell: React.FC<LessonShellProps> & {
             return {
                 problemDescription: voiceConfig?.instruction,
                 ...lessonContextProp,
-                availableStrategies: playbooks?.map(p => p.id) ?? [],
+                availableStrategies: [
+                    ...(playbooks?.map(p => p.id) ?? []),
+                    'simplified_view',
+                    'worked_example',
+                    'challenge_view'
+                ],
             } as LessonContext
         }, [lessonContextProp, playbooks, voiceConfig?.instruction])
 
@@ -218,11 +255,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
             if (cmd.type === 'annotate' && cmd.actions?.length) {
                 setAnnotations(cmd.actions)
             } else if (cmd.type === 'swap' && cmd.target) {
-                if (onSwapView) {
-                    onSwapView(cmd.target)
-                } else {
-                    setSwapOverlay({ target: cmd.target, speech: cmd.speech })
-                }
+                setSwapOverlay({ target: cmd.target, speech: cmd.speech })
             }
             if (cmd.speech) {
                 voice.speakInstruction(cmd.speech)
@@ -269,7 +302,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
             lessonId: resolvedLessonId,
             problemIndex,
             onSnapshot: handleSnapshot,
-            lessonContext: lessonContextProp,
+            lessonContext: fullLessonContext,
             hintPending: voice.showHintButton,
         })
 
@@ -277,15 +310,16 @@ export const LessonShell: React.FC<LessonShellProps> & {
         useEffect(() => {
             if (voiceConfig?.instruction && !hasSpokenInstruction.current) {
                 hasSpokenInstruction.current = true
-                if (resolvedLessonId !== 'unknown') {
+                const audioKey = voiceConfig.id || resolvedLessonId
+                if (audioKey !== 'unknown') {
                     // Use pre-recorded audio file to avoid TTS cold-start delay
-                    voice.speakPreRecorded(`/audio/intros/${resolvedLessonId}.wav`, voiceConfig.instruction)
+                    voice.speakPreRecorded(`/audio/intros/${audioKey}.wav`, voiceConfig.instruction)
                 } else {
                     // Fallback to normal TTS
                     voice.speakInstruction(voiceConfig.instruction)
                 }
             }
-        }, [voiceConfig?.instruction, voice.speakInstruction, voice.speakPreRecorded, resolvedLessonId])
+        }, [voiceConfig, voice.speakInstruction, voice.speakPreRecorded, resolvedLessonId])
 
         // Pre-cache feedback audio on mount for instant responses
         useEffect(() => {
@@ -353,7 +387,9 @@ export const LessonShell: React.FC<LessonShellProps> & {
                         swapOverlay={swapOverlay}
                         onDismissSwapOverlay={dismissSwapOverlay}
                     >
-                        {children}
+                        <div className={`w-full h-full transition-all duration-700 ${isSimplified ? 'simplified-mode' : ''}`}>
+                            {children}
+                        </div>
                     </LessonCanvas>
                 </div>
 

@@ -32,11 +32,15 @@ export const Rounding = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [answered, setAnswered] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
     const range = problem.high - problem.low
@@ -70,7 +74,7 @@ export const Rounding = () => {
     }, [answered, problem.answer, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setAnswered(false)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setAnswered(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -128,6 +132,7 @@ export const Rounding = () => {
             subtitle={`Round ${problem.number} to the nearest ten`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -160,9 +165,17 @@ export const Rounding = () => {
                                 scale: SPRING,
                                 y: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
                             }}
-                            className="text-7xl font-black font-display text-amber-300"
+                             className="text-7xl font-black font-display text-amber-300"
                         >
-                            {problem.number}
+                            {isSimplified ? (
+                                <>
+                                    <span>{Math.floor(problem.number / 10)}</span>
+                                    <span className="text-emerald-400 underline decoration-2 underline-offset-8 decoration-emerald-400/50">{problem.number % 10}</span>
+                                    <div className="text-[10px] uppercase text-emerald-400/60 mt-4 tracking-tighter">Deciding Digit</div>
+                                </>
+                            ) : (
+                                problem.number
+                            )}
                         </motion.div>
                     </AnimatePresence>
                 </motion.div>
@@ -171,6 +184,12 @@ export const Rounding = () => {
                 <div data-hint-region="round-track" className="w-full max-w-xl relative px-8">
                     {/* Track */}
                     <div className="h-3 bg-white/10 rounded-full relative overflow-visible">
+                        {isSimplified && (
+                            <>
+                                <div className="absolute inset-0 bg-blue-500/10 rounded-l-full" style={{ width: '50%' }} />
+                                <div className="absolute inset-y-0 right-0 bg-amber-500/10 rounded-r-full" style={{ width: '50%' }} />
+                            </>
+                        )}
                         {/* Midpoint glow */}
                         <motion.div
                             animate={{
@@ -187,7 +206,7 @@ export const Rounding = () => {
                         {Array.from({ length: 11 }, (_, i) => (
                             <div
                                 key={i}
-                                className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white/20"
+                                className={`absolute top-1/2 -translate-y-1/2 w-0.5 h-4 ${isSimplified ? (i < 5 ? 'bg-blue-400/40' : i > 5 ? 'bg-amber-400/40' : 'bg-white/40') : 'bg-white/20'}`}
                                 style={{ left: `${i * 10}%` }}
                             />
                         ))}
@@ -205,10 +224,10 @@ export const Rounding = () => {
                             style={{ transform: 'translateX(-50%)' }}
                         >
                             <motion.div
-                                animate={{ y: [0, -4, 0] }}
+                                animate={{ y: isSimplified ? 0 : [0, -4, 0] }}
                                 transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                             >
-                                <div className="text-3xl">📍</div>
+                                <div className="text-3xl">{isSimplified ? '👇' : '📍'}</div>
                             </motion.div>
                         </motion.div>
                     </div>

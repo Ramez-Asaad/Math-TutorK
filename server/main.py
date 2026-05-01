@@ -752,9 +752,11 @@ def _build_dynamic_system_prompt(t: dict, frontend_prompt: str | None = None) ->
     if acc >= 0.85 and stk >= 3:
         mods.append("The student is excelling. Encourage but push toward harder thinking. You MUST append <CELEBRATE> at the end of your message.")
     elif acc < 0.60 and wrong >= 3:
-        mods.append("The student is struggling. Be extra patient, break into small steps. You MUST append <SHOW_HINT> at the end of your message.")
+        mods.append("The student is struggling. Be extra patient, break into small steps. You MUST append <SHOW_HINT> at the end of your message. If they express confusion, append <SIMPLIFY> to change the visual representation.")
     elif stk == 0 and wrong > 0:
         mods.append("The student just got one wrong. Encourage gently and you MUST append <SHOW_HINT> at the end of your message.")
+
+    mods.append("If the student explicitly asks for an easier way, says they are stuck, or you feel the current visual is confusing them, append <SIMPLIFY> at the end of your message.")
 
     if idle_s >= 10:
         mods.append("Student idle — may be confused. Re-engage gently. Append <HIGHLIGHT> to draw their attention.")
@@ -959,6 +961,13 @@ async def process_llm_reply(
         if "<CELEBRATE>" in full_reply:
             detected_actions.append("<CELEBRATE>")
             await broadcast({"type": "teach", "strategy": "celebrate_success"})
+        if "<SIMPLIFY>" in full_reply:
+            detected_actions.append("<SIMPLIFY>")
+            await broadcast({
+                "type": "swap",
+                "target": "simplified_view",
+                "speech": "Let's look at this a simpler way!"
+            })
 
         if detected_actions:
             log.info(f"[LLM] Decided to take actions: {', '.join(detected_actions)}")

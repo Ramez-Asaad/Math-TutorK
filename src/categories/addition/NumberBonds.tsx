@@ -20,13 +20,17 @@ export const NumberBonds = () => {
     const navigate = useNavigate()
     const { addCorrect, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [split, setSplit] = useState(0) // left part; right = total - split
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [, setLocked] = useState<{ left: number; right: number } | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const left = split
@@ -58,7 +62,7 @@ export const NumberBonds = () => {
     }, [feedback, left, right, roundIdx, wrongCount, sessionPoints, addCorrect, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setSplit(0); setFeedback('none'); setLocked(null); setShowComplete(false)
+        reset(); setRoundIdx(0); setSplit(0); setFeedback('none'); setLocked(null); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -123,7 +127,8 @@ export const NumberBonds = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-emerald-600" subtitle={`Split ${round.total} into two parts!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -136,9 +141,16 @@ export const NumberBonds = () => {
                         data-hint-region="bond-total"
                         animate={{ scale: [1, 1.04, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        className="w-24 h-24 rounded-full bg-amber-500 flex items-center justify-center shadow-2xl border-4 border-amber-300"
+                        className="w-24 h-24 rounded-full bg-amber-500 flex items-center justify-center shadow-2xl border-4 border-amber-300 relative overflow-hidden"
                     >
-                        <span className="text-white font-black font-display text-4xl">{round.total}</span>
+                        {isSimplified && (
+                            <div className="absolute inset-0 grid grid-cols-4 gap-1 p-3 opacity-20 pointer-events-none">
+                                {Array.from({ length: round.total }).map((_, i) => (
+                                    <div key={i} className="w-2 h-2 rounded-full bg-white" />
+                                ))}
+                            </div>
+                        )}
+                        <span className="text-white font-black font-display text-4xl relative z-10">{round.total}</span>
                     </motion.div>
 
                     {/* Lines */}
@@ -157,9 +169,16 @@ export const NumberBonds = () => {
                             transition={feedback === 'correct'
                                 ? { type: 'spring', stiffness: 300, damping: 20 }
                                 : { duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                            className="w-20 h-20 rounded-full bg-emerald-700 border-4 border-emerald-400 flex items-center justify-center shadow-xl"
+                            className="w-20 h-20 rounded-full bg-emerald-700 border-4 border-emerald-400 flex items-center justify-center shadow-xl relative overflow-hidden"
                         >
-                            <span className="text-white font-black font-display text-3xl">{left || '?'}</span>
+                            {isSimplified && left > 0 && (
+                                <div className="absolute inset-0 grid grid-cols-3 gap-1 p-3 opacity-20 pointer-events-none">
+                                    {Array.from({ length: left }).map((_, i) => (
+                                        <div key={i} className="w-2 h-2 rounded-full bg-white" />
+                                    ))}
+                                </div>
+                            )}
+                            <span className="text-white font-black font-display text-3xl relative z-10">{left || '?'}</span>
                         </motion.div>
                         <motion.div
                             data-hint-region="bond-right"
@@ -169,9 +188,16 @@ export const NumberBonds = () => {
                             transition={feedback === 'correct'
                                 ? { type: 'spring', stiffness: 300, damping: 20 }
                                 : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-                            className="w-20 h-20 rounded-full bg-blue-700 border-4 border-blue-400 flex items-center justify-center shadow-xl"
+                            className="w-20 h-20 rounded-full bg-blue-700 border-4 border-blue-400 flex items-center justify-center shadow-xl relative overflow-hidden"
                         >
-                            <span className="text-white font-black font-display text-3xl">{right || '?'}</span>
+                            {isSimplified && right > 0 && (
+                                <div className="absolute inset-0 grid grid-cols-3 gap-1 p-3 opacity-20 pointer-events-none">
+                                    {Array.from({ length: right }).map((_, i) => (
+                                        <div key={i} className="w-2 h-2 rounded-full bg-white" />
+                                    ))}
+                                </div>
+                            )}
+                            <span className="text-white font-black font-display text-3xl relative z-10">{right || '?'}</span>
                         </motion.div>
                     </div>
                 </div>

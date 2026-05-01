@@ -33,9 +33,14 @@ export const Primes = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [selectedFactor, setSelectedFactor] = useState(0) // which factor pair to show
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
     const currentPair = problem.factors[selectedFactor]
@@ -68,7 +73,7 @@ export const Primes = () => {
     }, [problem.isPrime, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setSelectedFactor(0)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setSelectedFactor(0); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -128,6 +133,7 @@ export const Primes = () => {
             subtitle={`Is ${problem.number} prime or composite?`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -170,10 +176,13 @@ export const Primes = () => {
                                         <motion.div
                                             key={c}
                                             initial={{ scale: 0 }}
-                                            animate={{ scale: 1, y: [0, -4, 0] }}
+                                            animate={{
+                                                scale: 1,
+                                                y: isSimplified ? 0 : [0, -4, 0],
+                                            }}
                                             transition={{
                                                 scale: { ...SPRING, delay: (r * cols + c) * 0.03 },
-                                                y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: (r * cols + c) * 0.05 },
+                                                y: isSimplified ? { duration: 0 } : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: (r * cols + c) * 0.05 },
                                             }}
                                             className="w-8 h-8 rounded-full bg-indigo-400 shadow-lg"
                                         />

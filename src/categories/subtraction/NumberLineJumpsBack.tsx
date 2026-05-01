@@ -31,9 +31,14 @@ export const NumberLineJumpsBack = () => {
     const [roundIdx, setRoundIdx] = useState(0)
     const [position, setPosition] = useState(ROUNDS[0].start)
     const [jumps, setJumps] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const target = round.start - round.sub
@@ -80,7 +85,7 @@ export const NumberLineJumpsBack = () => {
 
     const handleRetry = () => {
         reset(); setRoundIdx(0); setPosition(ROUNDS[0].start); setJumps(0)
-        setFeedback('none'); setShowComplete(false)
+        setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const numbers = Array.from({ length: round.max - round.min + 1 }, (_, i) => i + round.min)
@@ -145,7 +150,8 @@ export const NumberLineJumpsBack = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-orange-600" subtitle={`${round.start} − ${round.sub} — jump back ${round.sub} times!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />

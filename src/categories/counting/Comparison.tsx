@@ -26,18 +26,18 @@ function getAnswer(left: number, right: number): '<' | '=' | '>' {
     return '='
 }
 
-const ObjectGrid = ({ count, emoji }: { count: number; emoji: string }) => (
-    <div className="flex flex-wrap gap-2 justify-center items-center max-w-[200px]">
+const ObjectGrid = ({ count, emoji, isSimplified }: { count: number; emoji: string; isSimplified?: boolean }) => (
+    <div className={`${isSimplified ? 'grid grid-cols-4 gap-2' : 'flex flex-wrap gap-2'} justify-center items-center max-w-[200px]`}>
         {Array.from({ length: count }, (_, i) => (
             <motion.div
                 key={i}
                 initial={{ scale: 0, rotate: -30 }}
-                animate={{ scale: 1, rotate: 0, y: [0, -4, 0] }}
+                animate={{ scale: 1, rotate: 0, y: isSimplified ? 0 : [0, -4, 0] }}
                 transition={{
                     scale: { type: 'spring', stiffness: 300, damping: 20, delay: i * 0.05 },
-                    y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.08 },
+                    y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.08 },
                 }}
-                className="text-3xl select-none"
+                className="text-3xl select-none flex justify-center"
             >
                 {emoji}
             </motion.div>
@@ -49,13 +49,17 @@ export const Comparison = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [emoji] = useState(() => EMOJIS[Math.floor(Math.random() * EMOJIS.length)])
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [chosen, setChosen] = useState<string | null>(null)
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const correct = getAnswer(round.left, round.right)
@@ -99,6 +103,7 @@ export const Comparison = () => {
         setFeedback('none')
         setChosen(null)
         setShowComplete(false)
+        setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -166,6 +171,7 @@ export const Comparison = () => {
             subtitle="Which side has more? Pick < = >"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -190,7 +196,9 @@ export const Comparison = () => {
                     className="flex items-center justify-center gap-6 bg-white/5 rounded-3xl border border-white/10 p-8 w-full max-w-2xl"
                 >
                     {/* Left group */}
-                    <div data-hint-region="compare-left" className="flex flex-col items-center gap-3 min-w-[180px]">
+                    <div data-hint-region="compare-left" 
+                        className={`flex flex-col items-center gap-3 min-w-[180px] p-4 rounded-2xl transition-colors
+                            ${isSimplified ? (round.left > round.right ? 'bg-emerald-500/10' : round.left < round.right ? 'bg-rose-500/10' : 'bg-blue-500/10') : ''}`}>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={`left-${roundIdx}`}
@@ -199,8 +207,8 @@ export const Comparison = () => {
                                 exit={{ opacity: 0, y: -20 }}
                                 className="flex flex-col items-center gap-2"
                             >
-                                <ObjectGrid count={round.left} emoji={emoji} />
-                                <div className="text-white font-black font-display text-4xl mt-2">{round.left}</div>
+                                <ObjectGrid count={round.left} emoji={emoji} isSimplified={isSimplified} />
+                                <div className={`font-black font-display text-4xl mt-2 ${isSimplified ? (round.left > round.right ? 'text-emerald-400' : round.left < round.right ? 'text-rose-400' : 'text-blue-400') : 'text-white'}`}>{round.left}</div>
                             </motion.div>
                         </AnimatePresence>
                     </div>
@@ -221,7 +229,9 @@ export const Comparison = () => {
                     </div>
 
                     {/* Right group */}
-                    <div data-hint-region="compare-right" className="flex flex-col items-center gap-3 min-w-[180px]">
+                    <div data-hint-region="compare-right" 
+                        className={`flex flex-col items-center gap-3 min-w-[180px] p-4 rounded-2xl transition-colors
+                            ${isSimplified ? (round.right > round.left ? 'bg-emerald-500/10' : round.right < round.left ? 'bg-rose-500/10' : 'bg-blue-500/10') : ''}`}>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={`right-${roundIdx}`}
@@ -230,8 +240,8 @@ export const Comparison = () => {
                                 exit={{ opacity: 0, y: -20 }}
                                 className="flex flex-col items-center gap-2"
                             >
-                                <ObjectGrid count={round.right} emoji={emoji} />
-                                <div className="text-white font-black font-display text-4xl mt-2">{round.right}</div>
+                                <ObjectGrid count={round.right} emoji={emoji} isSimplified={isSimplified} />
+                                <div className={`font-black font-display text-4xl mt-2 ${isSimplified ? (round.right > round.left ? 'text-emerald-400' : round.right < round.left ? 'text-rose-400' : 'text-blue-400') : 'text-white'}`}>{round.right}</div>
                             </motion.div>
                         </AnimatePresence>
                     </div>

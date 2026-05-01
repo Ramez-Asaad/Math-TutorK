@@ -22,8 +22,8 @@ export const FairShare = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [emoji] = useState(() => EMOJIS[Math.floor(Math.random() * EMOJIS.length)])
     const [distributed, setDistributed] = useState<number[]>([])
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
@@ -31,6 +31,10 @@ export const FairShare = () => {
     const [confetti, setConfetti] = useState(false)
     const [mode, setMode] = useState<'distribute' | 'answer'>('distribute')
     const [, setAnswer] = useState('')
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const perGroup = round.total / round.groups
@@ -85,7 +89,7 @@ export const FairShare = () => {
 
     const handleRetry = () => {
         reset(); setRoundIdx(0); setDistributed([]); setFeedback('none')
-        setMode('distribute'); setAnswer(''); setShowComplete(false)
+        setMode('distribute'); setAnswer(''); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -140,7 +144,8 @@ export const FairShare = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-teal-600" subtitle={`Share ${round.total} fairly between ${round.groups} groups!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -157,16 +162,25 @@ export const FairShare = () => {
                         {Array.from({ length: round.groups }, (_, g) => (
                             <motion.div key={g}
                                 animate={feedback === 'correct' ? { borderColor: '#10b981' } : {}}
-                                className="border-2 border-teal-500/40 rounded-2xl p-3 flex flex-wrap gap-1 justify-center min-w-[80px] bg-teal-900/20"
+                                className={`border-2 rounded-2xl p-3 flex flex-wrap gap-1 justify-center min-w-[100px] transition-colors ${isSimplified ? 'bg-teal-500/20 border-teal-500' : 'bg-teal-900/20 border-teal-500/40'}`}
                             >
-                                <div className="w-full text-center text-teal-300/60 font-display text-xs mb-1">Group {g + 1}</div>
-                                <AnimatePresence>
-                                    {Array.from({ length: distributed[g] ?? 0 }, (_, i) => (
-                                        <motion.span key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                            transition={{ type: 'spring', stiffness: 400 }}
-                                            className="text-2xl">{emoji}</motion.span>
-                                    ))}
-                                </AnimatePresence>
+                                <div className={`w-full text-center font-display text-xs mb-1 ${isSimplified ? 'text-teal-400 font-bold' : 'text-teal-300/60'}`}>Group {g + 1}</div>
+                                <div className={`flex flex-wrap gap-1 justify-center ${isSimplified ? 'grid grid-cols-3' : ''}`}>
+                                    {Array.from({ length: isSimplified ? perGroup : distributed[g] ?? 0 }, (_, i) => {
+                                        const isFilled = i < (distributed[g] ?? 0)
+                                        return (
+                                            <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isSimplified && !isFilled ? 'border-2 border-dashed border-teal-500/20' : ''}`}>
+                                                <AnimatePresence>
+                                                    {isFilled && (
+                                                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                                            transition={{ type: 'spring', stiffness: 400 }}
+                                                            className="text-2xl">{emoji}</motion.span>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
                             </motion.div>
                         ))}
                     </div>

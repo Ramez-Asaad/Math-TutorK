@@ -38,11 +38,15 @@ export const NegativeNumbers = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [characterPos, setCharacterPos] = useState(0)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
 
@@ -88,7 +92,7 @@ export const NegativeNumbers = () => {
     }, [problem, feedback, addCorrect, addWrong, advance])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setCharacterPos(0)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setCharacterPos(0); setIsSimplified(false)
     }
 
     // Character position percentage
@@ -158,6 +162,7 @@ export const NegativeNumbers = () => {
             subtitle={problem.question}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -209,10 +214,21 @@ export const NegativeNumbers = () => {
                     {/* Track with gradient */}
                     <div className="h-4 rounded-full relative overflow-hidden"
                         style={{
-                            background: 'linear-gradient(90deg, #3b82f6 0%, #3b82f6 47%, #fbbf24 50%, #ef4444 53%, #ef4444 100%)',
-                            opacity: 0.3,
+                            background: isSimplified ? 'transparent' : 'linear-gradient(90deg, #3b82f6 0%, #3b82f6 47%, #fbbf24 50%, #ef4444 53%, #ef4444 100%)',
+                            opacity: isSimplified ? 1 : 0.3,
                         }}
-                    />
+                    >
+                        {isSimplified && (
+                            <div className="absolute inset-0 flex">
+                                <div className="flex-1 bg-blue-500/20 rounded-l-full flex items-center justify-center border-r border-amber-400">
+                                    <span className="text-[10px] text-blue-300 font-black uppercase tracking-widest opacity-40">Negatives</span>
+                                </div>
+                                <div className="flex-1 bg-red-500/20 rounded-r-full flex items-center justify-center">
+                                    <span className="text-[10px] text-red-300 font-black uppercase tracking-widest opacity-40">Positives</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Zero marker */}
                     <div
@@ -246,11 +262,13 @@ export const NegativeNumbers = () => {
                     </div>
 
                     {/* Legend */}
-                    <div className="flex justify-between mt-2 text-xs font-display">
-                        <span className="text-blue-400">← Negative (cold)</span>
-                        <span className="text-amber-400">Zero ⭐</span>
-                        <span className="text-red-400">Positive (warm) →</span>
-                    </div>
+                    {!isSimplified && (
+                        <div className="flex justify-between mt-2 text-xs font-display">
+                            <span className="text-blue-400">← Negative (cold)</span>
+                            <span className="text-amber-400">Zero ⭐</span>
+                            <span className="text-red-400">Positive (warm) →</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Options for compare/calculate */}

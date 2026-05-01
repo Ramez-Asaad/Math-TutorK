@@ -21,14 +21,18 @@ export const ObjectTakeaway = () => {
     const navigate = useNavigate()
     const { addCorrect, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [emoji] = useState(() => EMOJIS[Math.floor(Math.random() * EMOJIS.length)])
     const [removedCount, setRemovedCount] = useState(0)
     const [removedIds, setRemovedIds] = useState<Set<number>>(new Set())
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const attempted = correctCount + wrongCount
@@ -65,7 +69,7 @@ export const ObjectTakeaway = () => {
 
     const handleRetry = () => {
         reset(); setRoundIdx(0); setRemovedCount(0); setRemovedIds(new Set())
-        setFeedback('none'); setShowComplete(false)
+        setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -121,7 +125,8 @@ export const ObjectTakeaway = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-orange-600" subtitle={`Remove ${round.remove} — click to take away!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -141,22 +146,22 @@ export const ObjectTakeaway = () => {
                     data-hint-region="emoji-pile"
                     animate={feedback === 'correct' ? { borderColor: '#10b981', x: 0 } : feedback === 'wrong' ? { x: [0, -8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    className="flex flex-wrap gap-3 justify-center max-w-md border-2 border-white/10 rounded-3xl p-6"
+                    className={`border-2 border-white/10 rounded-3xl p-6 justify-center ${isSimplified ? 'grid grid-cols-5 gap-4 w-fit' : 'flex flex-wrap gap-3 max-w-md'}`}
                 >
                     {Array.from({ length: round.total }, (_, i) => (
                         <motion.button
                             key={i}
                             onClick={() => handleDotClick(i)}
                             disabled={removedIds.has(i) || removedCount >= round.remove}
-                            animate={removedIds.has(i) ? { scale: 0, opacity: 0, rotate: 180 } : { scale: 1, opacity: 1, rotate: 0, y: [0, -4, 0] }}
+                            animate={removedIds.has(i) ? { scale: 0, opacity: 0, rotate: 180 } : { scale: 1, opacity: 1, rotate: 0, y: isSimplified ? 0 : [0, -4, 0] }}
                             whileHover={!removedIds.has(i) && removedCount < round.remove ? { scale: 1.05 } : {}}
                             whileTap={{ scale: 0.95 }}
                             transition={{
                                 scale: { type: 'spring', stiffness: 300, damping: 20 },
                                 rotate: { type: 'spring', stiffness: 300, damping: 20 },
-                                y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
+                                y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
                             }}
-                            className={`text-4xl select-none cursor-pointer transition-opacity
+                            className={`text-4xl select-none cursor-pointer transition-opacity flex justify-center
                 ${removedIds.has(i) ? 'pointer-events-none' :
                                     removedCount >= round.remove ? 'opacity-40 cursor-default' : ''}`}
                         >

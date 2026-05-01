@@ -69,11 +69,15 @@ export const WordProblems = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [showHint, setShowHint] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
 
@@ -104,7 +108,7 @@ export const WordProblems = () => {
     }, [problem.answer, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setShowHint(false)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setShowHint(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -162,6 +166,7 @@ export const WordProblems = () => {
             subtitle="Read the story and solve!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -201,7 +206,21 @@ export const WordProblems = () => {
 
                             {/* Story text */}
                             <p className="text-white text-lg font-display leading-relaxed text-center mb-4">
-                                {problem.story}
+                                {isSimplified ? (
+                                    problem.story.split(' ').map((word, i) => {
+                                        const cleanWord = word.replace(/[.,?!]/g, '').toLowerCase()
+                                        const isNumber = !isNaN(parseInt(cleanWord))
+                                        const isKeyword = ['how', 'many', 'total', 'more', 'away', 'equally', 'each', 'left', 'now'].includes(cleanWord) || word.includes('?')
+
+                                        if (isNumber || isKeyword) {
+                                            return <span key={i} className="text-amber-300 font-black text-2xl mx-1 bg-amber-500/20 px-1 rounded">{word}</span>
+                                        }
+
+                                        return <span key={i} className="text-white/20 text-base mx-1">{word}</span>
+                                    })
+                                ) : (
+                                    problem.story
+                                )}
                             </p>
 
                             {/* Equation highlight */}

@@ -23,10 +23,15 @@ export const TenFrame = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [removed, setRemoved] = useState<Set<number>>(new Set())
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const attempted = correctCount + wrongCount
@@ -61,7 +66,7 @@ export const TenFrame = () => {
     }, [removed, round, feedback, roundIdx, wrongCount, sessionPoints, addCorrect, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setRemoved(new Set()); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const remaining = round.filled - removed.size
@@ -119,7 +124,8 @@ export const TenFrame = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-orange-600" subtitle={`${round.filled} − ${round.remove} — click to remove!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -154,7 +160,12 @@ export const TenFrame = () => {
                                             'bg-orange-500 border-orange-400 cursor-pointer hover:bg-orange-400'}`}
                             >
                                 {isFilled && !isRemoved && (
-                                    <div className="w-7 h-7 rounded-full bg-white/80" />
+                                    <motion.div className="w-7 h-7 rounded-full bg-white/80"
+                                        animate={{ scale: 1, y: isSimplified ? 0 : [0, -3, 0] }}
+                                        transition={{
+                                            scale: { delay: i * 0.05, type: 'spring' },
+                                            y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 }
+                                        }} />
                                 )}
                                 {isRemoved && (
                                     <span className="text-red-500 text-xl">✕</span>

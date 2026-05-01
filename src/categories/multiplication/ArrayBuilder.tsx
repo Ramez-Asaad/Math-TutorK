@@ -21,13 +21,17 @@ export const ArrayBuilder = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [hoveredRow, setHoveredRow] = useState<number | null>(null)
     const [hoveredCol, setHoveredCol] = useState<number | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const answer = round.rows * round.cols
@@ -61,7 +65,7 @@ export const ArrayBuilder = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -116,7 +120,8 @@ export const ArrayBuilder = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-blue-600" subtitle={`${round.rows} rows × ${round.cols} columns = ?`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -129,39 +134,65 @@ export const ArrayBuilder = () => {
                     </motion.div>
 
                     {/* Array grid */}
-                    <motion.div
-                        data-hint-region="array-grid"
-                        animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
-                        className="border-2 border-white/10 rounded-3xl p-6"
-                    >
-                        {Array.from({ length: round.rows }, (_, r) => (
-                            <div key={r} className="flex gap-2 mb-2">
-                                {Array.from({ length: round.cols }, (_, c) => {
-                                    const rHover = hoveredRow !== null && r <= hoveredRow
-                                    const cHover = hoveredCol !== null && c <= hoveredCol
-                                    const isHighlighted = rHover && cHover
-                                    return (
-                                        <motion.div
-                                            key={c}
-                                            initial={{ scale: 0 }}
-                                            animate={{
-                                                scale: 1,
-                                                backgroundColor: feedback === 'correct'
-                                                    ? '#10b981'
-                                                    : isHighlighted
-                                                        ? '#60a5fa'
-                                                        : '#3b82f6'
-                                            }}
-                                            transition={{ delay: (r * round.cols + c) * 0.01, type: 'spring', stiffness: 400 }}
-                                            onMouseEnter={() => { setHoveredRow(r); setHoveredCol(c) }}
-                                            onMouseLeave={() => { setHoveredRow(null); setHoveredCol(null) }}
-                                            className="w-8 h-8 rounded-full cursor-pointer"
-                                        />
-                                    )
-                                })}
+                    <div className="flex">
+                        {/* Row Labels */}
+                        {isSimplified && (
+                            <div className="flex flex-col gap-2 pr-4 pt-6">
+                                {Array.from({ length: round.rows }, (_, r) => (
+                                    <div key={r} className="w-8 h-8 flex items-center justify-center text-blue-400 font-bold font-display text-sm">
+                                        {r + 1}
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </motion.div>
+                        )}
+
+                        <div className="flex flex-col items-center">
+                            {/* Column Labels */}
+                            {isSimplified && (
+                                <div className="flex gap-2 pb-4 pl-6">
+                                    {Array.from({ length: round.cols }, (_, c) => (
+                                        <div key={c} className="w-8 h-8 flex items-center justify-center text-blue-400 font-bold font-display text-sm">
+                                            {c + 1}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <motion.div
+                                data-hint-region="array-grid"
+                                animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : {}}
+                                className="border-2 border-white/10 rounded-3xl p-6"
+                            >
+                                {Array.from({ length: round.rows }, (_, r) => (
+                                    <div key={r} className="flex gap-2 mb-2">
+                                        {Array.from({ length: round.cols }, (_, c) => {
+                                            const rHover = hoveredRow !== null && r <= hoveredRow
+                                            const cHover = hoveredCol !== null && c <= hoveredCol
+                                            const isHighlighted = rHover && cHover
+                                            return (
+                                                <motion.div
+                                                    key={c}
+                                                    initial={{ scale: 0 }}
+                                                    animate={{
+                                                        scale: 1,
+                                                        backgroundColor: feedback === 'correct'
+                                                            ? '#10b981'
+                                                            : isHighlighted
+                                                                ? '#60a5fa'
+                                                                : '#3b82f6'
+                                                    }}
+                                                    transition={{ delay: (r * round.cols + c) * 0.01, type: 'spring', stiffness: 400 }}
+                                                    onMouseEnter={() => { setHoveredRow(r); setHoveredCol(c) }}
+                                                    onMouseLeave={() => { setHoveredRow(null); setHoveredCol(null) }}
+                                                    className="w-8 h-8 rounded-full cursor-pointer"
+                                                />
+                                            )
+                                        })}
+                                    </div>
+                                ))}
+                            </motion.div>
+                        </div>
+                    </div>
 
                     {hoveredRow !== null && hoveredCol !== null && (
                         <div className="text-blue-300 font-display text-sm">

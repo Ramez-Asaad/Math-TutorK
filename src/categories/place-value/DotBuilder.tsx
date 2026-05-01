@@ -49,11 +49,15 @@ export const DotBuilder = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [problemIdx, setProblemIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [counts, setCounts] = useState<Record<ColId, number>>({ thousands: 0, hundreds: 0, tens: 0, ones: 0 })
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[problemIdx]
     const total = COLUMNS.reduce((s, c) => s + counts[c.id] * c.value, 0)
@@ -106,6 +110,7 @@ export const DotBuilder = () => {
         setCounts({ thousands: 0, hundreds: 0, tens: 0, ones: 0 })
         setShowComplete(false)
         setFeedback('none')
+        setIsSimplified(false)
     }
 
     // Expanded form string
@@ -171,6 +176,7 @@ export const DotBuilder = () => {
             subtitle={`Build the number: ${problem.label}`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -234,10 +240,19 @@ export const DotBuilder = () => {
 
                                 {/* Dot grid */}
                                 <div
-                                    className="flex-1 bg-white/5 p-3 cursor-pointer"
+                                    className="flex-1 bg-white/5 p-3 cursor-pointer relative"
                                     onClick={() => addDot(col.id, 9)}
                                 >
-                                    <div className="grid grid-cols-2 gap-2 content-start min-h-full">
+                                    {/* Simplified View: Faint target outlines */}
+                                    {isSimplified && (
+                                        <div className="absolute inset-3 grid grid-cols-2 gap-2 content-start pointer-events-none opacity-20">
+                                            {Array.from({ length: Math.floor(target / col.value) % 10 }, (_, i) => (
+                                                <div key={`outline-${i}`} className="w-8 h-8 rounded-full border-2 border-dashed border-white" />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-2 content-start min-h-full relative z-10">
                                         <AnimatePresence>
                                             {Array.from({ length: count }, (_, i) => (
                                                 <Dot

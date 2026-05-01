@@ -17,31 +17,41 @@ const ROUNDS: Round[] = [
     { a: 74, b: 58 }, { a: 189, b: 124 },
 ]
 
-const DigitColumn = ({ top, bottom, label, carry }: { top: number; bottom: number; label: string; carry?: number }) => (
-    <div className="flex flex-col items-center gap-1 w-16" data-col={label}>
-        {carry !== undefined && carry > 0 ? (
-            <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                data-carry={label}
-                className="text-amber-400 font-bold font-display text-sm h-5">+{carry}</motion.div>
-        ) : <div className="h-5" />}
-        <div className="text-white/40 font-display text-xs">{label}</div>
-        <div className="text-white font-black font-display text-3xl">{top === -1 ? '' : top}</div>
-        <div className="text-white font-black font-display text-3xl">{bottom === -1 ? '' : bottom}</div>
-        <div className="w-full h-0.5 bg-white/30 my-1" />
-        <div className="text-amber-300 font-black font-display text-2xl h-8 flex items-center">?</div>
-    </div>
-)
+const DigitColumn = ({ top, bottom, label, carry, isSimplified }: { top: number; bottom: number; label: string; carry?: number; isSimplified?: boolean }) => {
+    const colColor = label === 'H' ? 'text-pink-400' : label === 'T' ? 'text-teal-400' : 'text-blue-400'
+    const bgClass = isSimplified ? (label === 'H' ? 'bg-pink-900/20' : label === 'T' ? 'bg-teal-900/20' : 'bg-blue-900/20') : ''
+    const borderClass = isSimplified ? 'border-l border-white/10' : ''
+    
+    return (
+        <div className={`flex flex-col items-center gap-1 w-16 px-1 ${bgClass} ${borderClass}`} data-col={label}>
+            {carry !== undefined && carry > 0 ? (
+                <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                    data-carry={label}
+                    className="text-amber-400 font-bold font-display text-sm h-5">+{carry}</motion.div>
+            ) : <div className="h-5" />}
+            <div className={`font-display text-xs ${isSimplified ? colColor : 'text-white/40'}`}>{label}</div>
+            <div className={`font-black font-display text-3xl ${isSimplified ? colColor : 'text-white'}`}>{top === -1 ? '' : top}</div>
+            <div className={`font-black font-display text-3xl ${isSimplified ? colColor : 'text-white'}`}>{bottom === -1 ? '' : bottom}</div>
+            <div className="w-full h-0.5 bg-white/30 my-1" />
+            <div className="text-amber-300 font-black font-display text-2xl h-8 flex items-center">?</div>
+        </div>
+    )
+}
 
 export const ColumnAddition = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [revealAnswer, setRevealAnswer] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const answer = round.a + round.b
@@ -87,7 +97,7 @@ export const ColumnAddition = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setRevealAnswer(false); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setRevealAnswer(false); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => {
@@ -172,7 +182,8 @@ export const ColumnAddition = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-emerald-600" subtitle="Add the columns — ones, tens, hundreds!"
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -189,10 +200,10 @@ export const ColumnAddition = () => {
                         <div className="absolute left-4 bottom-16 text-white/40 font-black font-display text-2xl">+</div>
 
                         {is3Digit && (
-                            <DigitColumn top={da.h} bottom={db.h} label="H" carry={carryT} />
+                            <DigitColumn top={da.h} bottom={db.h} label="H" carry={carryT} isSimplified={isSimplified} />
                         )}
-                        <DigitColumn top={da.t} bottom={db.t} label="T" carry={carryO} />
-                        <DigitColumn top={da.o} bottom={db.o} label="O" />
+                        <DigitColumn top={da.t} bottom={db.t} label="T" carry={carryO} isSimplified={isSimplified} />
+                        <DigitColumn top={da.o} bottom={db.o} label="O" isSimplified={isSimplified} />
 
                         {/* Answer row */}
                         {revealAnswer && (

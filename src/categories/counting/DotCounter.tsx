@@ -63,11 +63,16 @@ export const DotCounter = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [dots, setDots] = useState<Dot[]>(() => makeDots(ROUNDS[0]))
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [showCount, setShowCount] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const targetCount = ROUNDS[roundIdx]
     const attempted = correctCount + wrongCount
@@ -114,6 +119,7 @@ export const DotCounter = () => {
         setFeedback('none')
         setShowComplete(false)
         setShowCount(false)
+        setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -164,6 +170,7 @@ export const DotCounter = () => {
             subtitle="Count the dots and type the number!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -193,7 +200,7 @@ export const DotCounter = () => {
                                 key={`${roundIdx}-${dot.id}`}
                                 data-item={dot.id}
                                 initial={{ scale: 0, opacity: 0, rotate: -180 }}
-                                animate={{ scale: dot.scale, opacity: 1, rotate: 0, y: [0, -4, 0] }}
+                                animate={{ scale: dot.scale, opacity: 1, rotate: 0, y: isSimplified ? 0 : [0, -4, 0] }}
                                 exit={{ scale: 0, opacity: 0 }}
                                 whileHover={{ scale: dot.scale * 1.05 }}
                                 whileTap={{ scale: dot.scale * 0.95 }}
@@ -201,7 +208,7 @@ export const DotCounter = () => {
                                     scale: { type: 'spring', stiffness: 300, damping: 20, delay: dot.delay },
                                     opacity: { delay: dot.delay, duration: 0.2 },
                                     rotate: { delay: dot.delay, duration: 0.4 },
-                                    y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: dot.delay * 2 },
+                                    y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: dot.delay * 2 },
                                 }}
                                 style={{
                                     position: 'absolute',

@@ -55,9 +55,14 @@ export const BalanceScale = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [userAnswer, setUserAnswer] = useState<number | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
 
@@ -95,7 +100,7 @@ export const BalanceScale = () => {
     }, [problem.answer, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setUserAnswer(null)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setUserAnswer(null); setIsSimplified(false)
     }
 
     const balanced = feedback === 'correct'
@@ -159,6 +164,7 @@ export const BalanceScale = () => {
             subtitle="Find the missing weight to balance the scale!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -186,7 +192,7 @@ export const BalanceScale = () => {
 
                         {/* Beam */}
                         <motion.div
-                            animate={{ rotate: balanced ? 0 : rotationDeg }}
+                            animate={{ rotate: balanced ? 0 : isSimplified ? 0 : rotationDeg }}
                             transition={SPRING}
                             className="relative mx-auto"
                             style={{ width: '100%', height: 160, transformOrigin: 'center bottom' }}

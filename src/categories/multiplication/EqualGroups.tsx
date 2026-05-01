@@ -22,12 +22,16 @@ export const EqualGroups = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [showShaded, setShowShaded] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const answer = round.groups * round.perGroup
@@ -63,7 +67,7 @@ export const EqualGroups = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setShowShaded(false); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setShowShaded(false); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -118,7 +122,8 @@ export const EqualGroups = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-blue-600" subtitle={`${round.groups} groups of ${round.perGroup} = ?`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -142,21 +147,30 @@ export const EqualGroups = () => {
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ delay: g * 0.1, type: 'spring', stiffness: 300 }}
-                                className="rounded-2xl border-2 p-3 flex flex-wrap gap-1.5 justify-center"
-                                style={{ borderColor: COLORS[g % COLORS.length] + '60', backgroundColor: COLORS[g % COLORS.length] + '15', maxWidth: 120 }}
+                                className="rounded-2xl border-2 p-3 flex flex-col items-center gap-1.5"
+                                style={{ borderColor: COLORS[g % COLORS.length] + (isSimplified ? '90' : '60'), backgroundColor: COLORS[g % COLORS.length] + (isSimplified ? '30' : '15'), minWidth: 100 }}
                             >
-                                {Array.from({ length: round.perGroup }, (_, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        transition={{ delay: g * 0.1 + i * 0.04, type: 'spring' }}
-                                        className="w-7 h-7 rounded-full"
-                                        style={{ backgroundColor: COLORS[g % COLORS.length] }}
-                                    />
-                                ))}
+                                {isSimplified && (
+                                    <div className="text-[10px] uppercase font-black opacity-60 tracking-wider" style={{ color: COLORS[g % COLORS.length] }}>
+                                        Group {g + 1}
+                                    </div>
+                                )}
+                                <div className={`flex flex-wrap gap-1.5 justify-center ${isSimplified ? 'grid grid-cols-3' : ''}`}>
+                                    {Array.from({ length: round.perGroup }, (_, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{ delay: g * 0.1 + i * 0.04, type: 'spring' }}
+                                            className="w-7 h-7 rounded-full flex items-center justify-center"
+                                            style={{ backgroundColor: COLORS[g % COLORS.length] }}
+                                        >
+                                            {isSimplified && <span className="text-[10px] text-white/40">{i + 1}</span>}
+                                        </motion.div>
+                                    ))}
+                                </div>
                                 <div className="w-full text-center text-xs font-display mt-1" style={{ color: COLORS[g % COLORS.length] }}>
-                                    {round.perGroup}
+                                    {round.perGroup} items
                                 </div>
                             </motion.div>
                         ))}

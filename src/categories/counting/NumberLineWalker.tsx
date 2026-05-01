@@ -28,13 +28,17 @@ export const NumberLineWalker = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [position, setPosition] = useState(ROUNDS[0].start)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [direction, setDirection] = useState<'left' | 'right' | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const attempted = correctCount + wrongCount
@@ -81,6 +85,7 @@ export const NumberLineWalker = () => {
         setPosition(ROUNDS[0].start)
         setFeedback('none')
         setShowComplete(false)
+        setIsSimplified(false)
     }
 
     const numbers = Array.from({ length: round.max - round.min + 1 }, (_, i) => i + round.min)
@@ -142,6 +147,7 @@ export const NumberLineWalker = () => {
             subtitle={`Walk to number ${round.target}!`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -177,17 +183,22 @@ export const NumberLineWalker = () => {
 
                     {/* Tick marks */}
                     <div className="relative h-8 mx-4 mt-1">
-                        {numbers.map((n) => (
-                            <div
-                                key={n}
-                                className="absolute flex flex-col items-center"
-                                style={{ left: `${pct(n)}%`, transform: 'translateX(-50%)' }}
-                            >
-                                <div className={`w-0.5 h-3 ${n === round.target ? 'bg-amber-400' : 'bg-white/30'}`} />
-                                <span className={`font-display text-[10px] mt-0.5 ${n === round.target ? 'text-amber-400 font-bold' : 'text-white/40'
-                                    }`}>{n}</span>
-                            </div>
-                        ))}
+                        {numbers.map((n) => {
+                            const isMajor = n % 5 === 0 || n === round.target || n === round.min || n === round.max;
+                            if (isSimplified && !isMajor) return null;
+                            
+                            return (
+                                <div
+                                    key={n}
+                                    className="absolute flex flex-col items-center"
+                                    style={{ left: `${pct(n)}%`, transform: 'translateX(-50%)' }}
+                                >
+                                    <div className={`w-0.5 h-3 ${n === round.target ? 'bg-amber-400' : 'bg-white/30'}`} />
+                                    <span className={`font-display text-[10px] mt-0.5 ${n === round.target ? 'text-amber-400 font-bold' : 'text-white/40'
+                                        }`}>{n}</span>
+                                </div>
+                            )
+                        })}
                     </div>
 
                     {/* Target marker */}

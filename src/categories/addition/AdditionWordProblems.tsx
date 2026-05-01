@@ -28,12 +28,16 @@ export const AdditionWordProblems = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [showHint, setShowHint] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const answer = round.a + round.b
@@ -71,7 +75,7 @@ export const AdditionWordProblems = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false); setShowHint(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setShowComplete(false); setShowHint(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -134,7 +138,8 @@ export const AdditionWordProblems = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-emerald-600" subtitle="Read the story and solve!"
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -155,7 +160,23 @@ export const AdditionWordProblems = () => {
                         className="bg-white/5 rounded-3xl border-2 p-8"
                     >
                         <div className="text-6xl mb-4">{round.emoji}</div>
-                        <p className="text-white font-display text-xl leading-relaxed">{story}</p>
+                        <div className="text-white font-display text-xl leading-relaxed">
+                            {isSimplified ? (
+                                story.split(' ').map((word, i) => {
+                                    const cleanWord = word.replace(/[.,!?]/g, '');
+                                    const isNumber = !isNaN(Number(cleanWord));
+                                    const isKeyword = ['more', 'total', 'add', 'picks', 'jump', 'earns', 'land', 'join', 'plus'].includes(cleanWord.toLowerCase());
+                                    
+                                    return (
+                                        <span key={i} className={`inline-block mr-1 transition-opacity ${isNumber || isKeyword ? 'text-amber-400 font-bold opacity-100' : 'opacity-40'}`}>
+                                            {word}
+                                        </span>
+                                    );
+                                })
+                            ) : (
+                                story
+                            )}
+                        </div>
                     </motion.div>
 
                     {/* Hint */}

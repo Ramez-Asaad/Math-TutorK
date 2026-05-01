@@ -36,16 +36,20 @@ function randomPos() {
     }
 }
 
-/* ─── Main Component ─────────────────────────────────────────── */
 export const MissingNumberEq = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
 
     const [probIdx, setProbIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [chosenTile, setChosenTile] = useState<number | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[probIdx]
 
@@ -81,7 +85,7 @@ export const MissingNumberEq = () => {
     }, [problem.answer, probIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setChosenTile(null)
+        reset(); setProbIdx(0); setShowComplete(false); setFeedback('none'); setChosenTile(null); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -138,6 +142,7 @@ export const MissingNumberEq = () => {
             subtitle="Catch the right number!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -161,15 +166,15 @@ export const MissingNumberEq = () => {
                             initial={{ scale: 0 }}
                             animate={{
                                 scale: 1,
-                                y: i === problem.blankIdx ? [0, -6, 0] : 0,
+                                y: i === problem.blankIdx ? (isSimplified ? 0 : [0, -6, 0]) : 0,
                             }}
                             transition={{
                                 scale: { ...SPRING, delay: i * 0.06 },
-                                y: i === problem.blankIdx
+                                y: i === problem.blankIdx && !isSimplified
                                     ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
                                     : undefined,
                             }}
-                            className={`text-4xl font-black font-display ${i === problem.blankIdx
+                            className={`text-4xl font-black font-display relative ${i === problem.blankIdx
                                 ? feedback === 'correct'
                                     ? 'text-emerald-400 bg-emerald-500/20 px-4 py-2 rounded-xl border-2 border-emerald-400'
                                     : 'text-amber-300 bg-amber-500/20 px-4 py-2 rounded-xl border-2 border-amber-400 border-dashed'
@@ -185,8 +190,14 @@ export const MissingNumberEq = () => {
                     ))}
                 </motion.div>
 
+                {isSimplified && (
+                    <div className="w-full max-w-lg h-1 bg-white/20 rounded-full relative -mt-4">
+                        <div className="absolute left-1/2 top-0 -translate-x-1/2 w-4 h-4 bg-white/10 rotate-45 -translate-y-1/2 border border-white/20" />
+                    </div>
+                )}
+
                 {/* Floating tiles canvas */}
-                <div data-hint-region="mne-tiles" className="relative w-full max-w-lg h-48">
+                <div data-hint-region="mne-tiles" className={`relative w-full max-w-lg ${isSimplified ? 'flex flex-wrap justify-center gap-4 h-auto' : 'h-48'}`}>
                     {problem.options.map((num, i) => {
                         const pos = tilePositions[i]
                         const isChosen = chosenTile === num
@@ -200,20 +211,20 @@ export const MissingNumberEq = () => {
                                 animate={{
                                     scale: isCorrectChoice ? 0 : 1,
                                     opacity: isCorrectChoice ? 0 : 1,
-                                    x: isWrongChoice ? [pos.x, pos.x - 20, pos.x + 20, pos.x] : pos.x,
-                                    y: [pos.y, pos.y - 8, pos.y],
-                                    rotate: pos.rotation,
+                                    x: isSimplified ? 0 : isWrongChoice ? [pos.x, pos.x - 20, pos.x + 20, pos.x] : pos.x,
+                                    y: isSimplified ? 0 : [pos.y, pos.y - 8, pos.y],
+                                    rotate: isSimplified ? 0 : pos.rotation,
                                 }}
                                 transition={{
                                     scale: SPRING,
-                                    x: isWrongChoice ? { duration: 0.4 } : SPRING,
-                                    y: { duration: 2 + i * 0.3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 },
+                                    x: isWrongChoice && !isSimplified ? { duration: 0.4 } : SPRING,
+                                    y: isSimplified ? {} : { duration: 2 + i * 0.3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 },
                                 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleChoice(num)}
                                 disabled={feedback !== 'none'}
-                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-2xl bg-indigo-500/60 border-2 border-indigo-400 shadow-xl flex items-center justify-center text-white font-black font-display text-2xl cursor-pointer hover:bg-indigo-400/60"
+                                className={`${isSimplified ? 'relative' : 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'} w-16 h-16 rounded-2xl bg-indigo-500/60 border-2 border-indigo-400 shadow-xl flex items-center justify-center text-white font-black font-display text-2xl cursor-pointer hover:bg-indigo-400/60`}
                                 style={{ zIndex: isChosen ? 10 : 1 }}
                             >
                                 {num}

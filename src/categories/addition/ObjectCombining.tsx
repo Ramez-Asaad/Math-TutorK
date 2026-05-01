@@ -25,14 +25,18 @@ export const ObjectCombining = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [emoji] = useState(() => EMOJI_SETS[Math.floor(Math.random() * EMOJI_SETS.length)])
     const [combined, setCombined] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [answered, setAnswered] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const total = round.a + round.b
@@ -77,7 +81,7 @@ export const ObjectCombining = () => {
 
     const handleRetry = () => {
         reset(); setRoundIdx(0); setFeedback('none')
-        setCombined(false); setAnswered(false); setShowComplete(false)
+        setCombined(false); setAnswered(false); setShowComplete(false); setIsSimplified(false)
     }
 
     const groupA = Array.from({ length: round.a })
@@ -173,7 +177,8 @@ export const ObjectCombining = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-emerald-600" subtitle={`${round.a} + ${round.b} = ?`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -187,14 +192,14 @@ export const ObjectCombining = () => {
                             data-group="a"
                             animate={combined ? { x: 60, opacity: 0, scale: 0.6 } : { x: 0, opacity: 1, scale: 1 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                            className="bg-emerald-900/40 border border-emerald-500/30 rounded-2xl p-4 flex flex-wrap gap-2 justify-center min-w-[120px]"
+                            className={`bg-emerald-900/40 border border-emerald-500/30 rounded-2xl p-4 flex min-w-[120px] justify-center ${isSimplified ? 'grid grid-cols-5 gap-2' : 'flex-wrap gap-2'}`}
                         >
                             {groupA.map((_, i) => (
-                                <motion.span key={i} data-item={`a-${i}`} initial={{ scale: 0 }} animate={{ scale: 1, y: [0, -4, 0] }}
+                                <motion.span key={i} data-item={`a-${i}`} initial={{ scale: 0 }} animate={{ scale: 1, y: isSimplified ? 0 : [0, -4, 0] }}
                                     transition={{ scale: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 20 }, y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 } }}
-                                    className="text-3xl select-none">{emoji}</motion.span>
+                                    className="text-3xl select-none flex justify-center">{emoji}</motion.span>
                             ))}
-                            <div className="w-full text-center text-emerald-300 font-black font-display text-xl mt-1">{round.a}</div>
+                            {!isSimplified && <div className="w-full text-center text-emerald-300 font-black font-display text-xl mt-1">{round.a}</div>}
                         </motion.div>
 
                         {!combined && (
@@ -210,14 +215,14 @@ export const ObjectCombining = () => {
                             data-group="b"
                             animate={combined ? { x: -60, opacity: 0, scale: 0.6 } : { x: 0, opacity: 1, scale: 1 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                            className="bg-blue-900/40 border border-blue-500/30 rounded-2xl p-4 flex flex-wrap gap-2 justify-center min-w-[120px]"
+                            className={`bg-blue-900/40 border border-blue-500/30 rounded-2xl p-4 flex min-w-[120px] justify-center ${isSimplified ? 'grid grid-cols-5 gap-2' : 'flex-wrap gap-2'}`}
                         >
                             {groupB.map((_, i) => (
-                                <motion.span key={i} data-item={`b-${i}`} initial={{ scale: 0 }} animate={{ scale: 1, y: [0, -4, 0] }}
+                                <motion.span key={i} data-item={`b-${i}`} initial={{ scale: 0 }} animate={{ scale: 1, y: isSimplified ? 0 : [0, -4, 0] }}
                                     transition={{ scale: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 20 }, y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 } }}
-                                    className="text-3xl select-none">{emoji}</motion.span>
+                                    className="text-3xl select-none flex justify-center">{emoji}</motion.span>
                             ))}
-                            <div className="w-full text-center text-blue-300 font-black font-display text-xl mt-1">{round.b}</div>
+                            {!isSimplified && <div className="w-full text-center text-blue-300 font-black font-display text-xl mt-1">{round.b}</div>}
                         </motion.div>
                     </div>
 
@@ -227,14 +232,14 @@ export const ObjectCombining = () => {
                             <motion.div
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="bg-amber-900/30 border-2 border-amber-500/50 rounded-3xl p-6 flex flex-wrap gap-2 justify-center max-w-xs"
+                                className={`bg-amber-900/30 border-2 border-amber-500/50 rounded-3xl p-6 flex max-w-xs justify-center ${isSimplified ? 'grid grid-cols-5 gap-4' : 'flex-wrap gap-2'}`}
                             >
                                 {Array.from({ length: total }, (_, i) => (
-                                    <motion.span key={i} data-item={`c-${i}`} initial={{ scale: 0 }} animate={{ scale: 1, y: [0, -4, 0] }}
+                                    <motion.span key={i} data-item={`c-${i}`} initial={{ scale: 0 }} animate={{ scale: 1, y: isSimplified ? 0 : [0, -4, 0] }}
                                         transition={{ scale: { delay: i * 0.04, type: 'spring', stiffness: 300, damping: 20 }, y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.08 } }}
-                                        className="text-3xl select-none">{emoji}</motion.span>
+                                        className="text-3xl select-none flex justify-center">{emoji}</motion.span>
                                 ))}
-                                <div className="w-full text-center text-amber-300/60 font-display text-sm mt-2">Count them all!</div>
+                                {!isSimplified && <div className="w-full text-center text-amber-300/60 font-display text-sm mt-2 col-span-full">Count them all!</div>}
                             </motion.div>
                         )}
                     </AnimatePresence>

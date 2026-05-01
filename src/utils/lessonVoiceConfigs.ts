@@ -190,3 +190,8 @@ export const VOICE_CONFIGS: Record<string, LessonVoiceConfig> = {
     },
 }
 
+// Automatically inject the dictionary key as the `id` field
+// This ensures we always request the correct pre-recorded audio file.
+for (const [key, config] of Object.entries(VOICE_CONFIGS)) {
+    config.id = key
+}

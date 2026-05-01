@@ -21,14 +21,18 @@ export const RepeatedSubtraction = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [remaining, setRemaining] = useState(ROUNDS[0].dividend)
     const [steps, setSteps] = useState(0)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [answered, setAnswered] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const answer = round.dividend / round.divisor
@@ -75,7 +79,7 @@ export const RepeatedSubtraction = () => {
 
     const handleRetry = () => {
         reset(); setRoundIdx(0); setRemaining(ROUNDS[0].dividend); setSteps(0)
-        setFeedback('none'); setAnswered(false); setShowComplete(false)
+        setFeedback('none'); setAnswered(false); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -134,7 +138,8 @@ export const RepeatedSubtraction = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-teal-600" subtitle={`${round.dividend} ÷ ${round.divisor} — subtract ${round.divisor} each time!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -147,23 +152,34 @@ export const RepeatedSubtraction = () => {
                     </motion.div>
 
                     {/* Subtraction history */}
-                    <div data-hint-region="rs-history" className="flex items-center gap-2 flex-wrap justify-center max-w-lg">
+                    <div data-hint-region="rs-history" className="flex items-center gap-4 flex-wrap justify-center max-w-lg">
                         {history.map((val, i) => (
-                            <div key={i} className="flex items-center gap-1">
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                    transition={{ delay: 0, type: 'spring' }}
-                                    className="bg-teal-700/50 border border-teal-500/40 rounded-xl px-3 py-2 font-black font-display text-teal-300">
-                                    {val}
-                                </motion.div>
-                                <span className="text-white/40 font-display">−{round.divisor}</span>
+                            <div key={i} className="flex flex-col items-center gap-2">
+                                {isSimplified && <span className="text-[10px] text-teal-400 font-bold uppercase tracking-widest">Step {i + 1}</span>}
+                                <div className="flex items-center gap-1">
+                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                        transition={{ delay: 0, type: 'spring' }}
+                                        className={`bg-teal-700/50 border border-teal-500/40 rounded-xl px-3 py-2 font-black font-display text-teal-300 ${isSimplified ? 'ring-2 ring-teal-400/20' : ''}`}>
+                                        {val}
+                                    </motion.div>
+                                    <span className="text-white/40 font-display">−{round.divisor}</span>
+                                </div>
                             </div>
                         ))}
-                        <motion.div
-                            animate={{ backgroundColor: remaining === 0 ? 'rgba(16,185,129,0.3)' : 'rgba(20,184,166,0.2)', borderColor: remaining === 0 ? '#10b981' : 'rgba(20,184,166,0.4)' }}
-                            className="border-2 rounded-xl px-4 py-2 font-black font-display text-2xl text-white"
-                        >
-                            {remaining}
-                        </motion.div>
+                        <div className="flex flex-col items-center gap-2">
+                            {isSimplified && remaining === 0 && <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Final</span>}
+                            {isSimplified && remaining > 0 && <span className="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Next</span>}
+                            <motion.div
+                                animate={{ 
+                                    backgroundColor: remaining === 0 ? 'rgba(16,185,129,0.3)' : 'rgba(20,184,166,0.2)', 
+                                    borderColor: remaining === 0 ? '#10b981' : 'rgba(20,184,166,0.4)',
+                                    scale: isSimplified ? 1.1 : 1
+                                }}
+                                className="border-2 rounded-xl px-4 py-2 font-black font-display text-2xl text-white shadow-xl shadow-teal-500/10"
+                            >
+                                {remaining}
+                            </motion.div>
+                        </div>
                     </div>
 
                     <motion.button

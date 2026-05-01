@@ -43,11 +43,16 @@ export const Flashcards = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [deck] = useState<Card[]>(() => buildDeck())
+    const [isSimplified, setIsSimplified] = useState(false)
     const [index, setIndex] = useState(0)
     const [cardState, setCardState] = useState<'idle' | 'flip' | 'wrong'>('idle')
     const [showComplete, setShowComplete] = useState(false)
     const [streakBurst, setStreakBurst] = useState(false)
     const TOTAL = deck.length
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const current = deck[index]
     const attempted = correctCount + wrongCount
@@ -87,6 +92,7 @@ export const Flashcards = () => {
         setIndex(0)
         setShowComplete(false)
         setCardState('idle')
+        setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -137,6 +143,7 @@ export const Flashcards = () => {
             subtitle={`Card ${index + 1} of ${TOTAL}`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -166,7 +173,7 @@ export const Flashcards = () => {
                     </AnimatePresence>
 
                     {/* Shadow cards behind */}
-                    {[2, 1].map((offset) => (
+                    {!isSimplified && [2, 1].map((offset) => (
                         <div
                             key={offset}
                             style={{

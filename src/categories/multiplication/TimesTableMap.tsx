@@ -60,6 +60,7 @@ export const TimesTableMap = () => {
 
     const [cells, setCells] = useState<Record<string, CellData>>({})
     const [current, setCurrent] = useState(() => ({ a: 6, b: 7 }))
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showCorrect, setShowCorrect] = useState(false) // show answer briefly after wrong
     const [questionsAnswered, setQuestionsAnswered] = useState(0)
@@ -69,6 +70,10 @@ export const TimesTableMap = () => {
 
     const attempted = correctCount + wrongCount
     const correct = correctCount
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const handleAnswer = useCallback((val: string) => {
         if (feedback !== 'none') return
@@ -117,6 +122,7 @@ export const TimesTableMap = () => {
         setCurrent({ a: 6, b: 7 })
         setQuestionsAnswered(0)
         setShowComplete(false)
+        setIsSimplified(false)
         setFeedback('none')
         startTime.current = Date.now()
     }
@@ -177,6 +183,7 @@ export const TimesTableMap = () => {
             subtitle="Times Table Map — beat your fastest times!"
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -223,8 +230,8 @@ export const TimesTableMap = () => {
                                     return (
                                         <motion.div
                                             key={key}
-                                            animate={isActive ? { scale: 1.15, zIndex: 10 } : { scale: 1, zIndex: 1 }}
-                                            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                                            animate={isActive ? (isSimplified ? { scale: 1.2 } : { scale: [1.1, 1.3, 1.1] }) : { scale: 1, zIndex: 1 }}
+                                            transition={isActive && !isSimplified ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : { type: 'spring', stiffness: 400, damping: 20 }}
                                             className={`relative aspect-square rounded-lg flex items-center justify-center
                         text-xs font-bold font-display cursor-default
                         ${isActive ? 'ring-2 ring-amber-400' : ''}

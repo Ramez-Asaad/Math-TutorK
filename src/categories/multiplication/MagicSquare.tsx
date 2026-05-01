@@ -38,11 +38,16 @@ export const MagicSquare = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [activeBlank, setActiveBlank] = useState<number | null>(null)
     const [filledBlanks, setFilledBlanks] = useState<Record<number, number>>({})
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const blankIndices = round.grid.map((v, i) => v === null ? i : -1).filter(i => i !== -1)
@@ -94,7 +99,7 @@ export const MagicSquare = () => {
     }, [activeBlank, feedback, blankIndices, filledBlanks, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setFilledBlanks({}); setActiveBlank(null); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setFilledBlanks({}); setActiveBlank(null); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -148,7 +153,8 @@ export const MagicSquare = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-blue-600" subtitle={`Every row, column & diagonal = ${round.target}!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 4 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />

@@ -35,11 +35,17 @@ export const FactFamily = () => {
 
     const [roundIdx, setRoundIdx] = useState(0)
     const [blankPreset] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
+    const [missingIdx, setMissingIdx] = useState(0)
     const [activeSlot, setActiveSlot] = useState<SlotType | null>(null)
     const [filled, setFilled] = useState<Partial<Record<SlotType, number>>>({})
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const product = round.a * round.b
@@ -66,7 +72,12 @@ export const FactFamily = () => {
             <motion.span animate={isActive ? { opacity: [1, 0.3, 1] } : {}}
                 transition={{ duration: 0.8, repeat: Infinity }}
                 onClick={() => setActiveSlot(slot)}
-                className={`font-black font-display text-3xl cursor-pointer ${isActive ? 'text-amber-400' : 'text-white/30'}`}>
+                className={`relative font-black font-display text-3xl cursor-pointer ${isActive ? 'text-amber-400' : 'text-white/30'}`}>
+                <motion.div
+                    animate={isSimplified ? { scale: 1, opacity: 0.1 } : { scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+                    transition={isSimplified ? {} : { duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute inset-0 bg-blue-500/20 rounded-full blur-3xl"
+                />
                 ?
             </motion.span>
         )
@@ -110,7 +121,7 @@ export const FactFamily = () => {
     }, [activeSlot, feedback, filled, blanks, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFilled({}); setActiveSlot(null); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setMissingIdx(0); setFilled({}); setActiveSlot(null); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -204,7 +215,8 @@ export const FactFamily = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-teal-600" subtitle="Fill in the fact family!"
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />

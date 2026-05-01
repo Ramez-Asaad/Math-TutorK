@@ -86,11 +86,17 @@ export const DotGrouper = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [problemIdx, setProblemIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [dots, setDots] = useState<Dot[]>(() => makeDots(PROBLEMS[0]))
     const [groups, setGroups] = useState<Group[]>([])
     const [selected, setSelected] = useState<number | null>(null)
     const [showComplete, setShowComplete] = useState(false)
     const [shake, setShake] = useState<number | null>(null)  // dot id to shake
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+        else setIsSimplified(false)
+    }, [])
 
     const problem = PROBLEMS[problemIdx]
     const expectedGroups = problem.total / problem.groupSize
@@ -170,6 +176,7 @@ export const DotGrouper = () => {
         setGroups([])
         setSelected(null)
         setShowComplete(false)
+        setIsSimplified(false)
     }
 
     const completedGroupCount = groups.filter(g => g.dotIds.length === problem.groupSize).length
@@ -230,6 +237,7 @@ export const DotGrouper = () => {
             subtitle={`${problem.total} ÷ ${problem.divisor} — group the dots!`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -239,7 +247,7 @@ export const DotGrouper = () => {
                 onNext={() => navigate('/')}
             />
 
-            <div className="h-full flex gap-4 p-4">
+            <div className={`h-full flex gap-4 p-4 transition-all ${isSimplified ? 'opacity-80 scale-95' : ''}`}>
                 {/* ── Sidebar ── */}
                 <div className="w-32 flex flex-col gap-4 shrink-0">
                     {/* Problem display */}
@@ -276,7 +284,7 @@ export const DotGrouper = () => {
                 {/* ── Canvas ── */}
                 <div data-hint-region="dg-canvas" className="flex-1 relative bg-white/3 rounded-2xl border border-white/8 overflow-hidden">
                     {/* Group rings */}
-                    {groups.filter(g => g.dotIds.length === problem.groupSize).map((group) => {
+                    {!isSimplified && groups.filter(g => g.dotIds.length === problem.groupSize).map((group) => {
                         const groupDots = dots.filter(d => group.dotIds.includes(d.id))
                         const xs = groupDots.map(d => d.x)
                         const ys = groupDots.map(d => d.y)
@@ -326,7 +334,7 @@ export const DotGrouper = () => {
                                         ? { x: [0, -8, 8, -6, 6, -4, 4, 0] }
                                         : isSelected
                                             ? { scale: 1.3, y: [0, -4, 0] }
-                                            : { scale: 1, y: [0, -4, 0] }
+                                            : { scale: 1, y: isSimplified ? 0 : [0, -4, 0] }
                                 }
                                 transition={
                                     isShaking

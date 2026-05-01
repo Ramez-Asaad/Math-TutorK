@@ -17,23 +17,33 @@ const ROUNDS: Round[] = [
     { a: 82, b: 57 }, { a: 620, b: 385 },
 ]
 
-const DigitBox = ({ digit, label }: { digit: number; label: string }) => (
-    <div className="flex flex-col items-center gap-1 w-14">
-        <div className="text-white/40 font-display text-xs">{label}</div>
-        <div className="text-white font-black font-display text-3xl">{digit === -1 ? '' : digit}</div>
-    </div>
-)
+const DigitBox = ({ digit, label, isSimplified }: { digit: number; label: string; isSimplified?: boolean }) => {
+    const colColor = label === 'H' ? 'text-pink-400' : label === 'T' ? 'text-teal-400' : 'text-blue-400'
+    const bgClass = isSimplified ? (label === 'H' ? 'bg-pink-900/20' : label === 'T' ? 'bg-teal-900/20' : 'bg-blue-900/20') : ''
+    const borderClass = isSimplified ? 'border-l border-white/10' : ''
+    
+    return (
+        <div className={`flex flex-col items-center gap-1 w-14 pb-14 pt-1 ${bgClass} ${borderClass}`}>
+            <div className={`font-display text-xs ${isSimplified ? colColor : 'text-white/40'}`}>{label}</div>
+            <div className={`font-black font-display text-3xl ${isSimplified ? colColor : 'text-white'}`}>{digit === -1 ? '' : digit}</div>
+        </div>
+    )
+}
 
 export const ColumnSubtraction = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [revealAnswer, setRevealAnswer] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const answer = round.a - round.b
@@ -77,7 +87,7 @@ export const ColumnSubtraction = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setRevealAnswer(false); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setRevealAnswer(false); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -131,7 +141,8 @@ export const ColumnSubtraction = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-orange-600" subtitle="Subtract the columns!"
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -141,21 +152,21 @@ export const ColumnSubtraction = () => {
                     <motion.div
                         data-hint-region="col-sub-stack"
                         animate={feedback === 'correct' ? { borderColor: '#10b981' } : feedback === 'wrong' ? { x: [0, -8, 8, 0] } : { borderColor: 'rgba(255,255,255,0.1)' }}
-                        className="border-2 rounded-3xl p-8 relative flex gap-0 items-start"
+                        className="border-2 rounded-3xl p-8 relative flex gap-0 items-start overflow-hidden"
                     >
-                        <div className="absolute left-4 bottom-14 text-white/40 font-black font-display text-2xl">−</div>
-                        {is3Digit && <DigitBox digit={da.h} label="H" />}
-                        <DigitBox digit={da.t} label="T" />
-                        <DigitBox digit={da.o} label="O" />
+                        <div className="absolute left-4 bottom-14 text-white/40 font-black font-display text-2xl z-10">−</div>
+                        {is3Digit && <DigitBox digit={da.h} label="H" isSimplified={isSimplified} />}
+                        <DigitBox digit={da.t} label="T" isSimplified={isSimplified} />
+                        <DigitBox digit={da.o} label="O" isSimplified={isSimplified} />
 
-                        <div className="absolute top-[42px] left-8 right-8 border-b border-dashed border-white/20" />
-                        <div className="absolute bottom-3 left-8 right-8 border-b border-white/40" />
+                        <div className="absolute top-[42px] left-8 right-8 border-b border-dashed border-white/20 pointer-events-none" />
+                        <div className="absolute bottom-3 left-8 right-8 border-b border-white/40 pointer-events-none" />
 
                         {/* Bottom row */}
-                        <div className="absolute bottom-5 flex" style={{ left: is3Digit ? '2rem' : '2rem' }}>
-                            {is3Digit && <div className="w-14 text-center text-white font-black font-display text-3xl">{db.h === -1 ? 0 : db.h}</div>}
-                            <div className="w-14 text-center text-white font-black font-display text-3xl">{db.t}</div>
-                            <div className="w-14 text-center text-white font-black font-display text-3xl">{db.o}</div>
+                        <div className="absolute bottom-[26px] flex pointer-events-none" style={{ left: is3Digit ? '2rem' : '2rem' }}>
+                            {is3Digit && <div className={`w-14 text-center font-black font-display text-3xl ${isSimplified ? 'text-pink-400' : 'text-white'}`}>{db.h === -1 ? 0 : db.h}</div>}
+                            <div className={`w-14 text-center font-black font-display text-3xl ${isSimplified ? 'text-teal-400' : 'text-white'}`}>{db.t}</div>
+                            <div className={`w-14 text-center font-black font-display text-3xl ${isSimplified ? 'text-blue-400' : 'text-white'}`}>{db.o}</div>
                         </div>
 
                         {revealAnswer && (

@@ -29,12 +29,16 @@ export const MissingNumberSubtraction = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [revealed, setRevealed] = useState<number | null>(null)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const result = round.a - round.b
@@ -83,7 +87,7 @@ export const MissingNumberSubtraction = () => {
     }, [feedback, answer, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setRevealed(null); setShowComplete(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setRevealed(null); setShowComplete(false); setIsSimplified(false)
     }
 
     const hint = round.missing === 'result'
@@ -150,7 +154,8 @@ export const MissingNumberSubtraction = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-orange-600" subtitle="Find the missing number!"
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 3 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -165,10 +170,16 @@ export const MissingNumberSubtraction = () => {
                         {display('minuend')} − {display('subtrahend')} = {display('result')}
                     </motion.div>
 
+                    {isSimplified && (
+                        <div className="w-full max-w-lg h-1 bg-white/20 rounded-full relative -mt-4">
+                            <div className="absolute left-1/2 top-0 -translate-x-1/2 w-4 h-4 bg-white/10 rotate-45 -translate-y-1/2 border border-white/20" />
+                        </div>
+                    )}
+
                     <div className="text-white/40 font-display text-sm italic">{hint}</div>
 
                     {/* Visual dots */}
-                    <div data-hint-region="miss-sub-dots" className="flex gap-2 flex-wrap justify-center max-w-xs">
+                    <div data-hint-region="miss-sub-dots" className={`gap-2 justify-center ${isSimplified ? 'grid grid-cols-5' : 'flex flex-wrap max-w-xs'}`}>
                         {Array.from({ length: round.a }, (_, i) => (
                             <motion.div
                                 key={i}

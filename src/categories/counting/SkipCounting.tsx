@@ -42,13 +42,17 @@ export const SkipCounting = () => {
     const navigate = useNavigate()
     const { addCorrect, addWrong, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [filledBlanks, setFilledBlanks] = useState<Record<number, number | null>>({})
     const [activeBlank, setActiveBlank] = useState<number | null>(null)
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [wrongBlanks, setWrongBlanks] = useState<number[]>([])
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const attempted = correctCount + wrongCount
@@ -104,6 +108,7 @@ export const SkipCounting = () => {
         setFilledBlanks({})
         setActiveBlank(null)
         setShowComplete(false)
+        setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -166,6 +171,7 @@ export const SkipCounting = () => {
             subtitle={`${round.label} — fill in the blanks!`}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -198,67 +204,75 @@ export const SkipCounting = () => {
                             const isWrong = wrongBlanks.includes(i)
 
                             return (
-                                <motion.div key={i} data-skip-tile={i} className="flex items-center gap-2">
-                                    {isBlank ? (
-                                        <motion.button
-                                            animate={
-                                                isWrong
-                                                    ? { x: [0, -6, 6, 0], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.15)' }
-                                                    : isFilled
-                                                        ? { borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)', scale: 1 }
-                                                        : isActive
-                                                            ? { borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.15)', scale: 1.08 }
-                                                            : { borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.05)', scale: 1 }
-                                            }
-                                            transition={{ duration: 0.3 }}
-                                            onClick={() => !isFilled && handleBlankTap(i)}
-                                            className="w-16 h-16 rounded-2xl border-2 flex items-center justify-center font-black font-display text-2xl text-white cursor-pointer"
-                                        >
-                                            <AnimatePresence mode="wait">
-                                                {isFilled ? (
-                                                    <motion.span
-                                                        key="filled"
-                                                        initial={{ scale: 0 }}
-                                                        animate={{ scale: 1 }}
-                                                        className="text-emerald-300"
-                                                    >
-                                                        {filledBlanks[i]}
-                                                    </motion.span>
-                                                ) : isActive ? (
-                                                    <motion.span
-                                                        key="question"
-                                                        animate={{ opacity: [1, 0.2, 1] }}
-                                                        transition={{ duration: 0.8, repeat: Infinity }}
-                                                        className="text-amber-400"
-                                                    >
-                                                        ?
-                                                    </motion.span>
-                                                ) : (
-                                                    <span key="blank" className="text-white/20">_</span>
-                                                )}
-                                            </AnimatePresence>
-                                        </motion.button>
-                                    ) : (
+                                <div key={i} className="flex items-center gap-2">
+                                    <motion.div data-skip-tile={i} className="flex items-center gap-2">
+                                        {isBlank ? (
+                                            <motion.button
+                                                animate={
+                                                    isWrong
+                                                        ? { x: [0, -6, 6, 0], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.15)' }
+                                                        : isFilled
+                                                            ? { borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)', scale: 1 }
+                                                            : isActive
+                                                                ? { borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.15)', scale: 1.08 }
+                                                                : { borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.05)', scale: 1 }
+                                                }
+                                                transition={{ duration: 0.3 }}
+                                                onClick={() => !isFilled && handleBlankTap(i)}
+                                                className="w-16 h-16 rounded-2xl border-2 flex items-center justify-center font-black font-display text-2xl text-white cursor-pointer"
+                                            >
+                                                <AnimatePresence mode="wait">
+                                                    {isFilled ? (
+                                                        <motion.span
+                                                            key="filled"
+                                                            initial={{ scale: 0 }}
+                                                            animate={{ scale: 1 }}
+                                                            className="text-emerald-300"
+                                                        >
+                                                            {filledBlanks[i]}
+                                                        </motion.span>
+                                                    ) : isActive ? (
+                                                        <motion.span
+                                                            key="question"
+                                                            animate={{ opacity: [1, 0.2, 1] }}
+                                                            transition={{ duration: 0.8, repeat: Infinity }}
+                                                            className="text-amber-400"
+                                                        >
+                                                            ?
+                                                        </motion.span>
+                                                    ) : (
+                                                        <span key="blank" className="text-white/20">_</span>
+                                                    )}
+                                                </AnimatePresence>
+                                            </motion.button>
+                                        ) : (
+                                            <motion.div
+                                                data-skip-tile={i}
+                                                initial={{ scale: 0.5, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1, y: isSimplified ? 0 : [0, -4, 0] }}
+                                                transition={{
+                                                    scale: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 20 },
+                                                    opacity: { delay: i * 0.05, duration: 0.2 },
+                                                    y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
+                                                }}
+                                                className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center font-black font-display text-2xl text-white shadow-lg`}
+                                            >
+                                                {num}
+                                            </motion.div>
+                                        )}
+                                    </motion.div>
+
+                                    {isSimplified && i < round.sequence.length - 1 && (
                                         <motion.div
-                                            data-skip-tile={i}
-                                            initial={{ scale: 0.5, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1, y: [0, -4, 0] }}
-                                            transition={{
-                                                scale: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 20 },
-                                                opacity: { delay: i * 0.05, duration: 0.2 },
-                                                y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 },
-                                            }}
-                                            className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center font-black font-display text-2xl text-white shadow-lg`}
+                                            initial={{ opacity: 0, scale: 0.5 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="flex flex-col items-center gap-0.5"
                                         >
-                                            {num}
+                                            <div className="text-amber-400/60 font-bold text-xs">+{round.step}</div>
+                                            <div className="w-4 h-0.5 bg-amber-400/30 rounded-full" />
                                         </motion.div>
                                     )}
-
-                                    {/* Arrow between tiles */}
-                                    {i < round.sequence.length - 1 && (
-                                        <span className="text-white/30 font-display text-lg">→</span>
-                                    )}
-                                </motion.div>
+                                </div>
                             )
                         })}
                     </div>

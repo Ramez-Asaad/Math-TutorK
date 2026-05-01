@@ -46,11 +46,16 @@ export const GridPainter = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [problemIdx, setProblemIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [cells, setCells] = useState<Cell[]>([{ id: 0, color: null }])
     const [tool, setTool] = useState<Tool>(null)
     const [activeColor, setActiveColor] = useState<Color>(COLORS[3])
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const problem = PROBLEMS[problemIdx]
 
@@ -140,7 +145,7 @@ export const GridPainter = () => {
         setCells([{ id: 0, color: null }])
         setTool(null)
         setShowComplete(false)
-        setFeedback('none')
+        setFeedback('none'); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -205,6 +210,7 @@ export const GridPainter = () => {
             subtitle={problem.question}
             playbooks={playbooks}
             lessonContext={lessonContext}
+            onSwapView={handleSwapView}
         >
             <LessonComplete
                 show={showComplete}
@@ -297,6 +303,14 @@ export const GridPainter = () => {
                         >
                             {fraction}
                         </motion.div>
+                        {isSimplified && (
+                            <div className="flex flex-col items-center bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+                                <span className="text-[10px] uppercase text-white/40 font-bold">Status</span>
+                                <div className="text-white font-display text-sm">
+                                    <span className="text-emerald-400">{coloredCount}</span> shaded / <span className="text-blue-400">{cells.length}</span> total
+                                </div>
+                            </div>
+                        )}
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -314,7 +328,7 @@ export const GridPainter = () => {
               ${feedback === 'correct' ? 'border-emerald-500' : feedback === 'wrong' ? 'border-rose-500' : 'border-white/20'}`}
                         style={{ gridTemplateColumns: `repeat(${Math.min(cells.length, 6)}, 1fr)` }}
                     >
-                        {cells.map((cell) => (
+                        {cells.map((cell, idx) => (
                             <motion.div
                                 key={cell.id}
                                 layoutId={String(cell.id)}
@@ -322,9 +336,14 @@ export const GridPainter = () => {
                                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                                 whileHover={{ scale: 1.05 }}
                                 onClick={() => handleCellClick(cell.id)}
-                                className="border border-white/10 cursor-pointer relative overflow-hidden group"
+                                className="border border-white/10 cursor-pointer relative overflow-hidden group flex items-center justify-center"
                                 style={{ minHeight: 60 }}
                             >
+                                {isSimplified && (
+                                    <span className={`text-[10px] font-black opacity-30 select-none ${cell.color ? 'text-white' : 'text-white'}`}>
+                                        {idx + 1}
+                                    </span>
+                                )}
                                 {/* Radial fill ripple on click */}
                                 <motion.div
                                     className="absolute inset-0 rounded-full pointer-events-none"

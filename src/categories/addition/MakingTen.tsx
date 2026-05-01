@@ -19,12 +19,16 @@ export const MakingTen = () => {
     const navigate = useNavigate()
     const { addCorrect, sessionPoints, correctCount, wrongCount, reset } = useScoreStore()
     const { completeLesson, addPoints } = useProgressStore()
-
     const [roundIdx, setRoundIdx] = useState(0)
+    const [isSimplified, setIsSimplified] = useState(false)
     const [added, setAdded] = useState(0)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
+
+    const handleSwapView = useCallback((target: string) => {
+        if (target === 'simplified_view') setIsSimplified(true)
+    }, [])
 
     const round = ROUNDS[roundIdx]
     const needed = 10 - round.given
@@ -58,7 +62,7 @@ export const MakingTen = () => {
     }, [added, needed, feedback, roundIdx, wrongCount, sessionPoints, addCorrect, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setAdded(0); setFeedback('none'); setShowComplete(false)
+        reset(); setRoundIdx(0); setAdded(0); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [
@@ -130,7 +134,8 @@ export const MakingTen = () => {
             problemIndex={roundIdx} total={ROUNDS.length} attempted={attempted} correct={correctCount}
             accentClass="bg-emerald-600" subtitle={`${round.given} + ? = 10 — fill the frame!`}
             playbooks={playbooks}
-            lessonContext={lessonContext}>
+            lessonContext={lessonContext}
+            onSwapView={handleSwapView}>
             <LessonComplete show={showComplete} stars={wrongCount === 0 ? 3 : wrongCount <= 2 ? 2 : 1}
                 points={sessionPoints} onRetry={handleRetry} onNext={() => navigate('/')} />
             <Confetti active={confetti} />
@@ -155,6 +160,7 @@ export const MakingTen = () => {
                     {Array.from({ length: 10 }, (_, i) => {
                         const isGiven = i < round.given
                         const isAdded = i >= round.given && i < round.given + added
+                        const isNeeded = i >= round.given + added && i < 10
                         return (
                             <motion.div
                                 key={i}
@@ -164,18 +170,22 @@ export const MakingTen = () => {
                                 className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center cursor-pointer transition-all
                   ${isGiven ? 'bg-blue-500 border-blue-400' :
                                         isAdded ? 'bg-amber-500 border-amber-400' :
+                                            isSimplified ? 'bg-white/5 border-dashed border-amber-400/30 hover:border-amber-400/50' :
                                             'bg-white/5 border-white/20 hover:border-white/50'}`}
                             >
                                 {(isGiven || isAdded) && (
                                     <motion.div
                                         initial={{ scale: 0 }}
-                                        animate={{ scale: 1, y: [0, -4, 0] }}
+                                        animate={{ scale: 1, y: isSimplified ? 0 : [0, -4, 0] }}
                                         transition={{
                                             scale: { type: 'spring', stiffness: 300, damping: 20 },
-                                            y: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+                                            y: isSimplified ? {} : { duration: 2, repeat: Infinity, ease: 'easeInOut' },
                                         }}
                                         className="w-7 h-7 rounded-full bg-white/80"
                                     />
+                                )}
+                                {isSimplified && isNeeded && (
+                                    <div className="w-5 h-5 rounded-full border-2 border-dashed border-amber-400/20" />
                                 )}
                             </motion.div>
                         )
