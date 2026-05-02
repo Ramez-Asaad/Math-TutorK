@@ -102,7 +102,7 @@ _JAILBREAK_PATTERNS = re.compile(
 SAMPLE_RATE = 16000
 CHANNELS = 1
 SILENCE_THRESHOLD = 0.1
-SILENCE_DURATION = 1
+SILENCE_DURATION = 0.6
 
 COOLDOWN_S = 15.0           # Minimum seconds between any two visual commands
 CONSECUTIVE_THRESHOLD = 3   # Require N consecutive snapshots confirming a signal
@@ -144,7 +144,7 @@ stt_muted: bool = False
 # ── STT model (loaded once at import) ─────────────────────────
 
 log.info("Loading Moonshine STT model...")
-stt_model = MoonshineOnnxModel(model_name="moonshine/tiny")
+stt_model = MoonshineOnnxModel(model_name="moonshine/base")
 stt_tokenizer = load_tokenizer()
 log.info("Moonshine STT model loaded.")
 
@@ -994,15 +994,28 @@ async def audio_loop():
     log.info("Pipeline Ready! Awaiting frontend audio stream.")
     log.info("=" * 60)
 
+    # Adaptive VAD state
+    noise_floor = 0.01
+    alpha = 0.05
+    SPEECH_RATIO = 2.0
+    MIN_NOISE_FLOOR = 0.005
+
     while True:
             await asyncio.sleep(0.01)
             while not audio_queue.empty():
                 chunk = audio_queue.get_nowait()
                 rms = np.sqrt(np.mean(chunk ** 2))
 
-                if rms > SILENCE_THRESHOLD:
+                # Adaptive background noise tracking
+                if not is_speaking:
+                    noise_floor = (1 - alpha) * noise_floor + alpha * rms
+                    noise_floor = max(noise_floor, MIN_NOISE_FLOOR)
+
+                threshold = max(SILENCE_THRESHOLD, noise_floor * SPEECH_RATIO)
+
+                if rms > threshold:
                     if not is_speaking:
-                        log.info("[VAD] Speaking detected...")
+                        log.info(f"[VAD] Speaking detected... (RMS: {rms:.4f}, Threshold: {threshold:.4f})")
                         is_speaking = True
                         buffer = []
                     silence_frames = 0
