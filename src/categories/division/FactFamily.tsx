@@ -36,7 +36,6 @@ export const FactFamily = () => {
     const [roundIdx, setRoundIdx] = useState(0)
     const [blankPreset] = useState(0)
     const [isSimplified, setIsSimplified] = useState(false)
-    const [missingIdx, setMissingIdx] = useState(0)
     const [activeSlot, setActiveSlot] = useState<SlotType | null>(null)
     const [filled, setFilled] = useState<Partial<Record<SlotType, number>>>({})
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
@@ -121,7 +120,7 @@ export const FactFamily = () => {
     }, [activeSlot, feedback, filled, blanks, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setMissingIdx(0); setFilled({}); setActiveSlot(null); setFeedback('none'); setShowComplete(false); setIsSimplified(false)
+        reset(); setRoundIdx(0); setFilled({}); setActiveSlot(null); setFeedback('none'); setShowComplete(false);
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [

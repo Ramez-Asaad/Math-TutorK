@@ -38,15 +38,14 @@ export const MagicSquare = () => {
     const { completeLesson, addPoints } = useProgressStore()
 
     const [roundIdx, setRoundIdx] = useState(0)
-    const [isSimplified, setIsSimplified] = useState(false)
     const [feedback, setFeedback] = useState<'none' | 'correct' | 'wrong'>('none')
     const [showComplete, setShowComplete] = useState(false)
     const [confetti, setConfetti] = useState(false)
     const [activeBlank, setActiveBlank] = useState<number | null>(null)
     const [filledBlanks, setFilledBlanks] = useState<Record<number, number>>({})
 
-    const handleSwapView = useCallback((target: string) => {
-        if (target === 'simplified_view') setIsSimplified(true)
+    const handleSwapView = useCallback((_target: string) => {
+        // No simplified view available for magic square
     }, [])
 
     const round = ROUNDS[roundIdx]
@@ -99,7 +98,7 @@ export const MagicSquare = () => {
     }, [activeBlank, feedback, blankIndices, filledBlanks, roundIdx, wrongCount, sessionPoints, addCorrect, addWrong, completeLesson, addPoints])
 
     const handleRetry = () => {
-        reset(); setRoundIdx(0); setFeedback('none'); setFilledBlanks({}); setActiveBlank(null); setShowComplete(false); setIsSimplified(false)
+        reset(); setRoundIdx(0); setFeedback('none'); setFilledBlanks({}); setActiveBlank(null); setShowComplete(false);
     }
 
     const playbooks = useMemo<TeachingPlaybook[]>(() => [

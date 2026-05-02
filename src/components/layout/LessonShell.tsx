@@ -212,7 +212,7 @@ export const LessonShell: React.FC<LessonShellProps> & {
                     'worked_example',
                     'challenge_view'
                 ],
-            } as LessonContext
+            } as unknown as LessonContext
         }, [lessonContextProp, playbooks, voiceConfig?.instruction])
 
         /* ── Visual command handler ──────────────────────────── */
