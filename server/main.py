@@ -22,6 +22,7 @@ import sys
 import time
 import os
 from dataclasses import dataclass
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -101,8 +102,7 @@ _JAILBREAK_PATTERNS = re.compile(
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
-SILENCE_THRESHOLD = 0.1
-SILENCE_DURATION = 0.6
+SILENCE_DURATION = 1.5
 
 COOLDOWN_S = 15.0           # Minimum seconds between any two visual commands
 CONSECUTIVE_THRESHOLD = 3   # Require N consecutive snapshots confirming a signal
@@ -848,7 +848,8 @@ async def process_llm_reply(
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"} if GROQ_API_KEY else {}
     
-    provider = state.llm_provider if state else "groq"
+    effective_state = state if state is not None else _ws_session_state
+    provider = effective_state.llm_provider if effective_state else "groq"
 
     # Try Groq if selected (or default)
     if provider == "groq":
@@ -999,6 +1000,9 @@ async def audio_loop():
     alpha = 0.05
     SPEECH_RATIO = 2.0
     MIN_NOISE_FLOOR = 0.005
+    
+    # Pre-speech buffer: keep the last ~0.3s of audio before speech starts
+    pre_speech_buffer = deque(maxlen=20)
 
     while True:
             await asyncio.sleep(0.01)
@@ -1010,14 +1014,16 @@ async def audio_loop():
                 if not is_speaking:
                     noise_floor = (1 - alpha) * noise_floor + alpha * rms
                     noise_floor = max(noise_floor, MIN_NOISE_FLOOR)
+                    pre_speech_buffer.append(chunk)
 
-                threshold = max(SILENCE_THRESHOLD, noise_floor * SPEECH_RATIO)
+                threshold = noise_floor * SPEECH_RATIO
 
                 if rms > threshold:
                     if not is_speaking:
                         log.info(f"[VAD] Speaking detected... (RMS: {rms:.4f}, Threshold: {threshold:.4f})")
                         is_speaking = True
-                        buffer = []
+                        buffer = list(pre_speech_buffer)
+                        pre_speech_buffer.clear()
                     silence_frames = 0
                     buffer.append(chunk)
                 elif is_speaking:
