@@ -3,7 +3,7 @@
 #
 # Uses uv (https://docs.astral.sh/uv/) for fast dependency management.
 # First run downloads the model weights (~200MB).
-# The server runs on http://localhost:8000
+# The server runs on http://localhost:8002
 
 $ErrorActionPreference = "Stop"
 
@@ -12,7 +12,7 @@ $VenvDir = Join-Path $ScriptDir ".tts-venv"
 $UvBin = if ($env:UV_BIN) { $env:UV_BIN } else { "uv" }
 
 Write-Host ""
-Write-Host "  Starting Pocket TTS server on http://localhost:8000"
+Write-Host "  Starting Pocket TTS server on http://localhost:8002"
 Write-Host "  First run will download model + dependencies"
 Write-Host "  Press Ctrl+C to stop"
 Write-Host ""
@@ -32,4 +32,4 @@ if (-not (Test-Path $PocketTtsBin)) {
 }
 
 # Launch the server
-& $PocketTtsBin serve --host 0.0.0.0 --port 8000 --voice alba
+& $PocketTtsBin serve --host 0.0.0.0 --port 8002 --voice alba

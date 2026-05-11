@@ -22,7 +22,6 @@ import sys
 import time
 import os
 from dataclasses import dataclass
-from collections import deque
 from typing import Any
 
 import numpy as np
@@ -102,7 +101,8 @@ _JAILBREAK_PATTERNS = re.compile(
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
-SILENCE_DURATION = 1.5
+SILENCE_THRESHOLD = 0.1
+SILENCE_DURATION = 1
 
 COOLDOWN_S = 15.0           # Minimum seconds between any two visual commands
 CONSECUTIVE_THRESHOLD = 3   # Require N consecutive snapshots confirming a signal
@@ -113,7 +113,7 @@ app = FastAPI(title="Math-Tutor Agent")
 
 @app.api_route("/pocket-tts/{path:path}", methods=["GET", "POST", "OPTIONS"])
 async def proxy_tts_request(request: Request, path: str):
-    url = f"http://localhost:8000/{path}"
+    url = f"http://localhost:8002/{path}"
     body = await request.body()
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -144,7 +144,7 @@ stt_muted: bool = False
 # ── STT model (loaded once at import) ─────────────────────────
 
 log.info("Loading Moonshine STT model...")
-stt_model = MoonshineOnnxModel(model_name="moonshine/base")
+stt_model = MoonshineOnnxModel(model_name="moonshine/tiny")
 stt_tokenizer = load_tokenizer()
 log.info("Moonshine STT model loaded.")
 
@@ -848,8 +848,7 @@ async def process_llm_reply(
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"} if GROQ_API_KEY else {}
     
-    effective_state = state if state is not None else _ws_session_state
-    provider = effective_state.llm_provider if effective_state else "groq"
+    provider = state.llm_provider if state else "groq"
 
     # Try Groq if selected (or default)
     if provider == "groq":
@@ -995,35 +994,17 @@ async def audio_loop():
     log.info("Pipeline Ready! Awaiting frontend audio stream.")
     log.info("=" * 60)
 
-    # Adaptive VAD state
-    noise_floor = 0.01
-    alpha = 0.05
-    SPEECH_RATIO = 2.0
-    MIN_NOISE_FLOOR = 0.005
-    
-    # Pre-speech buffer: keep the last ~0.3s of audio before speech starts
-    pre_speech_buffer = deque(maxlen=20)
-
     while True:
             await asyncio.sleep(0.01)
             while not audio_queue.empty():
                 chunk = audio_queue.get_nowait()
                 rms = np.sqrt(np.mean(chunk ** 2))
 
-                # Adaptive background noise tracking
-                if not is_speaking:
-                    noise_floor = (1 - alpha) * noise_floor + alpha * rms
-                    noise_floor = max(noise_floor, MIN_NOISE_FLOOR)
-                    pre_speech_buffer.append(chunk)
-
-                threshold = noise_floor * SPEECH_RATIO
-
-                if rms > threshold:
+                if rms > SILENCE_THRESHOLD:
                     if not is_speaking:
-                        log.info(f"[VAD] Speaking detected... (RMS: {rms:.4f}, Threshold: {threshold:.4f})")
+                        log.info("[VAD] Speaking detected...")
                         is_speaking = True
-                        buffer = list(pre_speech_buffer)
-                        pre_speech_buffer.clear()
+                        buffer = []
                     silence_frames = 0
                     buffer.append(chunk)
                 elif is_speaking:

@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/pocket-tts': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8002',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/pocket-tts/, ''),
       },
